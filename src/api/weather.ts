@@ -1,6 +1,52 @@
 const WEATHER_API_URL = 'https://api.weatherapi.com/v1/forecast.json'
 const WEATHER_API_SEARCH_URL = 'https://api.weatherapi.com/v1/search.json'
 
+const WIND_DIRECTION_MAP: Record<string, string> = {
+  N: 'Észak',
+  NNE: 'Észak-északkelet',
+  NE: 'Északkelet',
+  ENE: 'Kelet-északkelet',
+  E: 'Kelet',
+  ESE: 'Kelet-délkelet',
+  SE: 'Délkelet',
+  SSE: 'Dél-délkelet',
+  S: 'Dél',
+  SSW: 'Dél-délnyugat',
+  SW: 'Délnyugat',
+  WSW: 'Nyugat-délnyugat',
+  W: 'Nyugat',
+  WNW: 'Nyugat-északnyugat',
+  NW: 'Északnyugat',
+  NNW: 'Észak-északnyugat',
+}
+
+export function parseWindDirection(dir: string): string {
+  if (!dir || typeof dir !== 'string') {
+    return dir || 'Ismeretlen irány'
+  }
+  const normalized = dir.toUpperCase().trim()
+  return WIND_DIRECTION_MAP[normalized] || dir
+}
+
+const MOON_PHASE_MAP: Record<string, string> = {
+  'New Moon': 'Újhold',
+  'Waxing Crescent': 'Növekvő hold',
+  'First Quarter': 'Első negyed',
+  'Waxing Gibbous': 'Növekvő hold',
+  'Full Moon': 'Telihold',
+  'Waning Gibbous': 'Fogyó hold',
+  'Last Quarter': 'Utolsó negyed',
+  'Waning Crescent': 'Fogyó hold',
+}
+
+export function parseMoonPhase(phase: string): string {
+  if (!phase || typeof phase !== 'string') {
+    return phase || 'Ismeretlen fázis'
+  }
+  const normalized = phase.trim()
+  return MOON_PHASE_MAP[normalized] || phase
+}
+
 type WeatherApiResponse = {
   location: {
     name: string
@@ -41,7 +87,6 @@ export type WeatherData = {
   pressureHpa: number
   pressureTrend: 'emelkedő' | 'csökkenő' | 'stabil'
   airTemperatureC: number
-  waterTemperatureC: number | null
   windDirection: string
   windSpeedKph: number
   cloudCoverPercent: number
@@ -121,8 +166,7 @@ export async function fetchWeather(locationQuery: string): Promise<WeatherData> 
     pressureHpa: data.current.pressure_mb,
     pressureTrend,
     airTemperatureC: data.current.temp_c,
-    waterTemperatureC: null, // WeatherAPI "forecast.json" nem tartalmaz vízhőmérséklet adatot.
-    windDirection: data.current.wind_dir,
+    windDirection: parseWindDirection(data.current.wind_dir),
     windSpeedKph: data.current.wind_kph,
     cloudCoverPercent: data.current.cloud,
     uvIndex: data.current.uv,
@@ -130,7 +174,7 @@ export async function fetchWeather(locationQuery: string): Promise<WeatherData> 
     precipitationIntensityMmPerHour: data.current.precip_mm,
     sunrise: forecastDay?.astro.sunrise ?? '-',
     sunset: forecastDay?.astro.sunset ?? '-',
-    moonPhase: forecastDay?.astro.moon_phase ?? '-',
+    moonPhase: parseMoonPhase(forecastDay?.astro.moon_phase ?? '-'),
   }
 }
 

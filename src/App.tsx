@@ -694,11 +694,8 @@ function App() {
               </p>
             </div>
             <div>
-              <p style={{ margin: '0 0 0.25rem' }}>
-                Levegő hőmérséklet: {weatherData.airTemperatureC.toFixed(1)} °C
-              </p>
               <p style={{ margin: 0 }}>
-                Vízhőmérséklet: {weatherData.waterTemperatureC !== null ? `${weatherData.waterTemperatureC.toFixed(1)} °C` : 'nem elérhető'}
+                Levegő hőmérséklet: {weatherData.airTemperatureC.toFixed(1)} °C
               </p>
             </div>
             <div>
@@ -801,107 +798,109 @@ function App() {
                 Összesen {records.length} mentett rekord.
               </p>
             )}
-            {records.length === 0 ? (
-              <p>Nincs mentett rekord. Adj meg egy helyszínt fent, majd kattints a „Mentés” gombra.</p>
-            ) : selectedRecord ? (
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '0.5rem',
-                  padding: '1rem',
-                  borderRadius: '0.5rem',
-                  border: '1px solid #cbd5f5',
-                  backgroundColor: '#f8fafc',
-                  color: '#000000',
-                }}
-              >
-                <span>
-                  <strong>Helyszín:</strong> {selectedRecord.locationName}
-                </span>
-                <span>
-                  <strong>Keresési kifejezés:</strong> {selectedRecord.locationQuery}
-                </span>
-                {selectedRecord.coordinates ? (
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.5rem',
+                padding: '1rem',
+                borderRadius: '0.5rem',
+                border: '1px solid #cbd5f5',
+                backgroundColor: '#f8fafc',
+                color: '#000000',
+                minHeight: '500px',
+                overflowY: 'auto',
+              }}
+            >
+              {records.length === 0 ? (
+                <p style={{ textAlign: 'center', color: '#64748b', marginTop: '2rem' }}>
+                  Nincs mentett rekord. Adj meg egy helyszínt fent, majd kattints a „Mentés” gombra.
+                </p>
+              ) : selectedRecord ? (
+                <>
                   <span>
-                    <strong>Koordináták:</strong> {selectedRecord.coordinates.lat.toFixed(4)},{' '}
-                    {selectedRecord.coordinates.lon.toFixed(4)}
+                    <strong>Helyszín:</strong> {selectedRecord.locationName}
                   </span>
-                ) : null}
-                <span>
-                  <strong>Létrehozva:</strong> {new Date(selectedRecord.createdAt).toLocaleString()}
-                </span>
-                <span>
-                  <strong>Frissítve:</strong> {new Date(selectedRecord.updatedAt).toLocaleString()}
-                </span>
-                <span>
-                  <strong>Felhasználó UID:</strong> {selectedRecord.ownerUid}
-                </span>
-                {selectedRecord.weatherSnapshot ? (
-                  <div
-                    style={{
-                      marginTop: '1rem',
-                      padding: '1rem',
-                      borderRadius: '0.5rem',
-                      backgroundColor: '#e0f2fe',
-                      border: '1px solid #bae6fd',
-                      display: 'grid',
-                      gap: '0.75rem',
-                      gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-                    }}
-                  >
-                    <div>
-                      <p style={{ margin: 0, fontWeight: 600 }}>Mentett időjárás pillanat</p>
-                      <p style={{ margin: 0, fontSize: '0.85rem', color: '#0369a1' }}>
-                        Mentve: {new Date(selectedRecord.weatherSnapshot.capturedAt).toLocaleString()}
-                      </p>
-                      <p style={{ margin: '0.5rem 0 0' }}>
-                        Légnyomás: {selectedRecord.weatherSnapshot.pressureHpa.toFixed(0)} hPa (
-                        {selectedRecord.weatherSnapshot.pressureTrend})
-                      </p>
+                  <span>
+                    <strong>Keresési kifejezés:</strong> {selectedRecord.locationQuery}
+                  </span>
+                  {selectedRecord.coordinates ? (
+                    <span>
+                      <strong>Koordináták:</strong> {selectedRecord.coordinates.lat.toFixed(4)},{' '}
+                      {selectedRecord.coordinates.lon.toFixed(4)}
+                    </span>
+                  ) : null}
+                  <span>
+                    <strong>Létrehozva:</strong> {new Date(selectedRecord.createdAt).toLocaleString()}
+                  </span>
+                  <span>
+                    <strong>Frissítve:</strong> {new Date(selectedRecord.updatedAt).toLocaleString()}
+                  </span>
+                  <span>
+                    <strong>Felhasználó UID:</strong> {selectedRecord.ownerUid}
+                  </span>
+                  {selectedRecord.weatherSnapshot ? (
+                    <div
+                      style={{
+                        marginTop: '1rem',
+                        padding: '1rem',
+                        borderRadius: '0.5rem',
+                        backgroundColor: '#e0f2fe',
+                        border: '1px solid #bae6fd',
+                        display: 'grid',
+                        gap: '0.75rem',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                      }}
+                    >
+                      <div>
+                        <p style={{ margin: 0, fontWeight: 600 }}>Mentett időjárás pillanat</p>
+                        <p style={{ margin: 0, fontSize: '0.85rem', color: '#0369a1' }}>
+                          Mentve: {new Date(selectedRecord.weatherSnapshot.capturedAt).toLocaleString()}
+                        </p>
+                        <p style={{ margin: '0.5rem 0 0' }}>
+                          Légnyomás: {selectedRecord.weatherSnapshot.pressureHpa.toFixed(0)} hPa (
+                          {selectedRecord.weatherSnapshot.pressureTrend})
+                        </p>
+                      </div>
+                      <div>
+                        <p style={{ margin: 0 }}>
+                          Levegő: {selectedRecord.weatherSnapshot.airTemperatureC.toFixed(1)} °C
+                        </p>
+                      </div>
+                      <div>
+                        <p style={{ margin: 0 }}>
+                          Szél: {selectedRecord.weatherSnapshot.windDirection}{' '}
+                          {selectedRecord.weatherSnapshot.windSpeedKph.toFixed(1)} km/h
+                        </p>
+                        <p style={{ margin: '0.25rem 0 0' }}>
+                          Felhőzet: {selectedRecord.weatherSnapshot.cloudCoverPercent}% &nbsp;|&nbsp; UV:{' '}
+                          {selectedRecord.weatherSnapshot.uvIndex.toFixed(1)}
+                        </p>
+                      </div>
+                      <div>
+                        <p style={{ margin: 0 }}>
+                          Csapadék esély: {selectedRecord.weatherSnapshot.precipitationChancePercent}% &nbsp;|&nbsp;
+                          Intenzitás: {selectedRecord.weatherSnapshot.precipitationIntensityMmPerHour.toFixed(1)} mm/h
+                        </p>
+                        <p style={{ margin: '0.25rem 0 0' }}>
+                          Napkelte: {selectedRecord.weatherSnapshot.sunrise} &nbsp;|&nbsp; Napnyugta:{' '}
+                          {selectedRecord.weatherSnapshot.sunset}
+                        </p>
+                        <p style={{ margin: '0.25rem 0 0' }}>Holdfázis: {selectedRecord.weatherSnapshot.moonPhase}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p style={{ margin: 0 }}>
-                        Levegő: {selectedRecord.weatherSnapshot.airTemperatureC.toFixed(1)} °C
-                      </p>
-                      <p style={{ margin: '0.25rem 0 0' }}>
-                        Vízhőmérséklet:{' '}
-                        {selectedRecord.weatherSnapshot.waterTemperatureC !== null
-                          ? `${selectedRecord.weatherSnapshot.waterTemperatureC.toFixed(1)} °C`
-                          : 'nem elérhető'}
-                      </p>
-                    </div>
-                    <div>
-                      <p style={{ margin: 0 }}>
-                        Szél: {selectedRecord.weatherSnapshot.windDirection}{' '}
-                        {selectedRecord.weatherSnapshot.windSpeedKph.toFixed(1)} km/h
-                      </p>
-                      <p style={{ margin: '0.25rem 0 0' }}>
-                        Felhőzet: {selectedRecord.weatherSnapshot.cloudCoverPercent}% &nbsp;|&nbsp; UV:{' '}
-                        {selectedRecord.weatherSnapshot.uvIndex.toFixed(1)}
-                      </p>
-                    </div>
-                    <div>
-                      <p style={{ margin: 0 }}>
-                        Csapadék esély: {selectedRecord.weatherSnapshot.precipitationChancePercent}% &nbsp;|&nbsp;
-                        Intenzitás: {selectedRecord.weatherSnapshot.precipitationIntensityMmPerHour.toFixed(1)} mm/h
-                      </p>
-                      <p style={{ margin: '0.25rem 0 0' }}>
-                        Napkelte: {selectedRecord.weatherSnapshot.sunrise} &nbsp;|&nbsp; Napnyugta:{' '}
-                        {selectedRecord.weatherSnapshot.sunset}
-                      </p>
-                      <p style={{ margin: '0.25rem 0 0' }}>Holdfázis: {selectedRecord.weatherSnapshot.moonPhase}</p>
-                    </div>
-                  </div>
-                ) : (
-                  <p style={{ marginTop: '1rem', color: '#475569' }}>
-                    Ehhez a rekordhoz még nem tartozik mentett időjárási pillanat. Mentéskor automatikusan rögzül.
-                  </p>
-                )}
-              </div>
-            ) : (
-              <p>Válassz egy rekordot a listából, vagy adj meg egy új helyszínt és mentsd el.</p>
-            )}
+                  ) : (
+                    <p style={{ marginTop: '1rem', color: '#475569' }}>
+                      Ehhez a rekordhoz még nem tartozik mentett időjárási pillanat. Mentéskor automatikusan rögzül.
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p style={{ textAlign: 'center', color: '#64748b', marginTop: '2rem' }}>
+                  Válassz egy rekordot a listából, vagy adj meg egy új helyszínt és mentsd el.
+                </p>
+              )}
+            </div>
           </>
         )}
       </section>
