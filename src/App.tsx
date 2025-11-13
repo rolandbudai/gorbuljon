@@ -42,6 +42,7 @@ function App() {
   const [locationSuggestionLoading, setLocationSuggestionLoading] = useState(false)
   const [locationSuggestionError, setLocationSuggestionError] = useState<string | null>(null)
   const [showSuggestions, setShowSuggestions] = useState(false)
+  const [poppingBubbles, setPoppingBubbles] = useState<Set<number>>(new Set())
 
   useEffect(() => {
     if (authLoading) {
@@ -106,13 +107,6 @@ function App() {
     setSelectedRecordId(first.id)
   }, [records, selectedRecordId, user])
 
-  useEffect(() => {
-    if (selectedRecord) {
-      setLocation(selectedRecord.locationName)
-      setLocationQuery(selectedRecord.locationQuery)
-      setCoordinates(selectedRecord.coordinates)
-    }
-  }, [selectedRecord])
 
   useEffect(() => {
     if (!user) {
@@ -418,9 +412,6 @@ function App() {
   const handleSelectRecord = (recordId: string) => {
     const record = records.find((item) => item.id === recordId)
     if (record) {
-      setLocation(record.locationName)
-      setLocationQuery(record.locationQuery)
-      setCoordinates(record.coordinates)
       setWeatherError(null)
       setMessage(`"${record.locationName}" megnyitva.`)
     }
@@ -454,9 +445,31 @@ function App() {
     }
   }
 
+  const handleBubbleClick = (index: number) => {
+    setPoppingBubbles((prev) => new Set(prev).add(index))
+    setTimeout(() => {
+      setPoppingBubbles((prev) => {
+        const next = new Set(prev)
+        next.delete(index)
+        return next
+      })
+    }, 500)
+  }
+
   return (
-    <main style={{ padding: '2rem', fontFamily: 'system-ui, sans-serif' }}>
-      <h1>Firebase kapcsolat teszt</h1>
+    <>
+      <div className="underwater-background">
+        {Array.from({ length: 10 }, (_, index) => (
+          <div
+            key={index}
+            className={`bubble ${poppingBubbles.has(index) ? 'popping' : ''}`}
+            onClick={() => handleBubbleClick(index)}
+          />
+        ))}
+      </div>
+      <main style={{ padding: '2rem', fontFamily: 'system-ui, sans-serif', position: 'relative', zIndex: 10 }}>
+        <h1>Horgász napló!</h1>
+        <h4>Best horgász app in the world...</h4>
       <section
         style={{
           margin: '1.5rem 0',
@@ -534,9 +547,7 @@ function App() {
         Helyszín
         {user ? (
           <span style={{ fontSize: '0.85rem', color: '#475569' }}>
-            {selectedRecord
-              ? `Kijelölt rekord: ${selectedRecord.locationName}. Új helyszín mentéséhez írd át és kattints a „Mentés” gombra.`
-              : 'Adj meg egy helyszínt, majd kattints a „Mentés” gombra.'}
+            Adj meg egy helyszínt, majd kattints a „Mentés” gombra.
           </span>
         ) : null}
         <input
@@ -636,7 +647,7 @@ function App() {
             transition: 'background-color 0.2s ease',
           }}
         >
-          {geolocationLoading ? 'Helyzet meghatározása…' : 'Helyzet lekérése'}
+          {geolocationLoading ? 'Helyzet meghatározása…' : 'Automatikus helymeghatározás'}
         </button>
         {geolocationError && <span style={{ color: '#dc2626' }}>{geolocationError}</span>}
       </div>
@@ -821,9 +832,6 @@ function App() {
                   <span>
                     <strong>Helyszín:</strong> {selectedRecord.locationName}
                   </span>
-                  <span>
-                    <strong>Keresési kifejezés:</strong> {selectedRecord.locationQuery}
-                  </span>
                   {selectedRecord.coordinates ? (
                     <span>
                       <strong>Koordináták:</strong> {selectedRecord.coordinates.lat.toFixed(4)},{' '}
@@ -832,12 +840,6 @@ function App() {
                   ) : null}
                   <span>
                     <strong>Létrehozva:</strong> {new Date(selectedRecord.createdAt).toLocaleString()}
-                  </span>
-                  <span>
-                    <strong>Frissítve:</strong> {new Date(selectedRecord.updatedAt).toLocaleString()}
-                  </span>
-                  <span>
-                    <strong>Felhasználó UID:</strong> {selectedRecord.ownerUid}
                   </span>
                   {selectedRecord.weatherSnapshot ? (
                     <div
@@ -904,7 +906,8 @@ function App() {
           </>
         )}
       </section>
-    </main>
+      </main>
+    </>
   )
 }
 
