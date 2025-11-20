@@ -18,6 +18,7 @@ import {
   getVariableStations,
   getWaters,
   type ForecastEntry,
+  type Measurement,
   type MeasurementEntry,
   type Station,
   type StationVariable,
@@ -65,6 +66,10 @@ function App() {
   const [forecastLoading, setForecastLoading] = useState(false)
   const [forecastError, setForecastError] = useState<string | null>(null)
   const [forecastStationId, setForecastStationId] = useState<number | null>(null) // Melyik állomásról származik az előrejelzés
+  const [pastWaterLevelData, setPastWaterLevelData] = useState<Array<{ entry: MeasurementEntry; measurement: Measurement }> | null>(null)
+  const [pastWaterLevelLoading, setPastWaterLevelLoading] = useState(false)
+  const [pastWaterLevelError, setPastWaterLevelError] = useState<string | null>(null)
+  const [hoveredPointIndex, setHoveredPointIndex] = useState<number | null>(null)
   const [stationDetails, setStationDetails] = useState<Station | null>(null)
   const [locationSuggestions, setLocationSuggestions] = useState<LocationSearchResult[]>([])
   const [locationSuggestionLoading, setLocationSuggestionLoading] = useState(false)
@@ -97,7 +102,7 @@ function App() {
         if (userRecords.length === 0) {
           setMessage('Nincs mentett rekord. Adj meg egy helyszínt és mentsd el.')
         } else {
-          setMessage('Bejelentkezve. Válassz egy rekordot vagy ments új helyszínt.')
+          setMessage('')
         }
       },
       () => {
@@ -713,6 +718,112 @@ function App() {
     }
   }, [waterData, waterLevelVarId, user])
 
+  // Előző 3 nap vízállás adatainak lekérése
+  useEffect(() => {
+    if (!user || !waterData || !waterLevelVarId) {
+      setPastWaterLevelData(null)
+      return
+    }
+
+    let cancelled = false
+
+    const loadPastWaterLevel = async () => {
+      setPastWaterLevelLoading(true)
+      setPastWaterLevelError(null)
+      try {
+        // Számoljuk ki az elmúlt 3 nap dátumát
+        const today = new Date()
+        const threeDaysAgo = new Date(today)
+        threeDaysAgo.setDate(today.getDate() - 3)
+        const fromdate = threeDaysAgo.toISOString().split('T')[0]
+        const todate = today.toISOString().split('T')[0]
+
+        const measurements = await getMeasurements({
+          varid: waterLevelVarId,
+          statid: waterData.statid,
+          fromdate: fromdate,
+          todate: todate,
+          extended: true,
+        })
+
+        if (!cancelled) {
+          // Szűrjük az érvényes méréseket és csoportosítjuk napok szerint
+          const validMeasurements = measurements
+            .filter((entry) => entry.measurements && entry.measurements.length > 0)
+            .flatMap((entry) =>
+              entry.measurements
+                .filter((m) => m.value !== null && m.value !== undefined)
+                .map((m) => ({
+                  entry: entry,
+                  measurement: m,
+                })),
+            )
+
+          // Csoportosítjuk napok szerint és kiválasztjuk a napi egy értéket (12:00 vagy legközelebbi)
+          const dailyMeasurements = validMeasurements.reduce((acc: typeof validMeasurements, item) => {
+            const date = new Date(item.measurement.date)
+            const dateKey = date.toISOString().split('T')[0] // YYYY-MM-DD
+
+            const existing = acc.find((a) => {
+              const aDate = new Date(a.measurement.date)
+              return aDate.toISOString().split('T')[0] === dateKey
+            })
+
+            if (!existing) {
+              acc.push(item)
+            } else {
+              const existingHour = new Date(existing.measurement.date).getHours()
+              const currentHour = date.getHours()
+              const existingDiff = Math.abs(existingHour - 12)
+              const currentDiff = Math.abs(currentHour - 12)
+
+              if (currentDiff < existingDiff) {
+                const index = acc.indexOf(existing)
+                acc[index] = item
+              }
+            }
+
+            return acc
+          }, [])
+
+          // Rendezzük dátum szerint és csak az elmúlt 3 napot vesszük
+          dailyMeasurements.sort((a, b) => {
+            const dateA = new Date(a.measurement.date).getTime()
+            const dateB = new Date(b.measurement.date).getTime()
+            return dateA - dateB
+          })
+
+          // Kizárjuk a mai napot és csak az előző 3 napot vesszük
+          const today = new Date()
+          today.setHours(0, 0, 0, 0)
+          const filtered = dailyMeasurements.filter((item) => {
+            const itemDate = new Date(item.measurement.date)
+            itemDate.setHours(0, 0, 0, 0)
+            return itemDate < today
+          })
+
+          // Csak az utolsó 3 napot vesszük
+          setPastWaterLevelData(filtered.slice(-3))
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setPastWaterLevelError('Nem sikerült lekérni az előző napok vízállás adatait')
+          setPastWaterLevelData(null)
+        }
+      } finally {
+        if (!cancelled) {
+          setPastWaterLevelLoading(false)
+        }
+      }
+    }
+
+    void loadPastWaterLevel()
+
+    return () => {
+      cancelled = true
+    }
+  }, [waterData, waterLevelVarId, user])
+
   // Állomás részletes adatainak lekérése
   useEffect(() => {
     if (!user || !waterData) {
@@ -953,7 +1064,7 @@ function App() {
           setCoordinates(coords)
           setShowSuggestions(false)
           setLocationSuggestions([])
-          setSaveMessage('Az aktuális helyzet alapján betöltöttük a legközelebbi települést. Mentsd el, ha szeretnéd használni.')
+          setSaveMessage('Az aktuális helyzet alapján betöltöttük az adatokat. Mentsd el, ha szeretnéd naplózni.')
         } catch (error) {
           setGeolocationError('Nem sikerült feldolgozni a helyadatokat.')
         } finally {
@@ -1141,40 +1252,56 @@ function App() {
         ))}
       </div>
       <main style={{ padding: '2rem', fontFamily: 'system-ui, sans-serif', position: 'relative', zIndex: 10 }}>
-        <h1>H<span style={{ color: '#000000' }}>APP</span>Y FiSH</h1>
+        <h1>ITT<span style={{ color: '#000000' }}>A</span>HAL</h1>
         <h4>Best horgász app in the world...</h4>
       <section
         style={{
-          margin: '1.5rem 0',
-          padding: '1.5rem',
-          borderRadius: '0.75rem',
+          margin: '0.5rem 0',
+          padding: '0.75rem',
+          borderRadius: '0.5rem',
           border: '1px solid rgba(255, 255, 247, 0.2)',
           backgroundColor: 'rgba(85, 161, 191, 0.15)',
           backdropFilter: 'blur(10px)',
           color: 'rgba(255, 255, 247, 0.95)',
           display: 'flex',
           flexDirection: 'column',
-          gap: '1rem',
+          gap: '0.5rem',
           boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
         }}
       >
-        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'rgba(255, 255, 247, 0.95)' }}>Google autentikáció</h2>
         {authLoading ? (
-          <p style={{ color: 'rgba(255, 255, 247, 0.9)' }}>Bejelentkezés állapotának ellenőrzése…</p>
+          <p style={{ color: 'rgba(255, 255, 247, 0.9)', fontSize: '0.75rem', margin: 0 }}>Bejelentkezés állapotának ellenőrzése…</p>
         ) : user ? (
-          <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               {user.photoURL ? (
-                <div className="user-avatar-bubble">
+                <div style={{
+                  position: 'relative',
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '50%',
+                  background: 'rgba(255, 255, 247, 0.2)',
+                  border: '1px solid rgba(255, 255, 247, 0.3)',
+                  padding: '1px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
                   <img
                     src={user.photoURL}
                     alt={user.displayName ?? user.email ?? 'Felhasználó'}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      borderRadius: '50%',
+                      objectFit: 'cover',
+                    }}
                   />
                 </div>
               ) : null}
               <div>
-                <p style={{ margin: 0, fontWeight: 500, color: 'rgba(255, 255, 247, 0.95)' }}>{user.displayName ?? 'Bejelentkezett felhasználó'}</p>
-                <p style={{ margin: 0, fontSize: '0.9rem', color: 'rgba(255, 255, 247, 0.8)' }}>{user.email}</p>
+                <p style={{ margin: 0, fontWeight: 500, color: 'rgba(255, 255, 247, 0.95)', fontSize: '0.8rem' }}>{user.displayName ?? 'Bejelentkezett felhasználó'}</p>
+                <p style={{ margin: 0, fontSize: '0.7rem', color: 'rgba(255, 255, 247, 0.8)' }}>{user.email}</p>
               </div>
             </div>
             <button
@@ -1182,47 +1309,49 @@ function App() {
               onClick={handleSignOut}
               disabled={authActionRunning}
               style={{
-                alignSelf: 'flex-start',
-                padding: '0.5rem 1rem',
+                padding: '0.25rem 0.5rem',
                 borderRadius: '0.25rem',
                 border: '1px solid #ef4444',
                 backgroundColor: authActionRunning ? '#fca5a5' : '#ef4444',
                 color: '#FFFFF7',
                 cursor: authActionRunning ? 'not-allowed' : 'pointer',
                 transition: 'background-color 0.2s ease',
+                fontSize: '0.75rem',
+                opacity: 0.8,
               }}
             >
               Kijelentkezés
             </button>
-          </>
+          </div>
         ) : (
           <>
-            <p style={{ color: 'rgba(255, 255, 247, 0.9)' }}>Belépés után tudod menteni a helyszíneket.</p>
+            <p style={{ color: 'rgba(255, 255, 247, 0.9)', fontSize: '0.75rem', margin: 0 }}>Belépés után tudod menteni a helyszíneket.</p>
             <button
               type="button"
               onClick={handleSignIn}
               disabled={authActionRunning}
               style={{
                 alignSelf: 'flex-start',
-                padding: '0.5rem 1rem',
+                padding: '0.25rem 0.5rem',
                 borderRadius: '0.25rem',
                 border: '1px solid #2563eb',
                 backgroundColor: authActionRunning ? '#93c5fd' : '#2563eb',
                 color: '#FFFFF7',
                 cursor: authActionRunning ? 'not-allowed' : 'pointer',
                 transition: 'background-color 0.2s ease',
+                fontSize: '0.75rem',
               }}
             >
               Belépés Google fiókkal
             </button>
           </>
         )}
-        {authError && <p style={{ color: '#dc2626' }}>{authError}</p>}
+        {authError && <p style={{ color: '#dc2626', fontSize: '0.75rem', margin: 0 }}>{authError}</p>}
       </section>
       <label style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
         {user ? (
           <span style={{ fontSize: '0.85rem', color: '#FFFFF7' }}>
-            Adj meg egy helyszínt vagy majd kattints az „Automatikus helymeghatározás” gombra.
+            Adj meg egy helyszínt <span style={{ color: 'rgba(211, 43, 21, 0.95)', fontWeight: 'bold'}}> vagy </span> kattints az „Automatikus helymeghatározás” gombra.
           </span>
         ) : null}
         <input
@@ -1326,25 +1455,6 @@ function App() {
         </button>
         {geolocationError && <span style={{ color: '#dc2626' }}>{geolocationError}</span>}
       </div>
-      <button
-        type="button"
-        onClick={handleSave}
-        disabled={isSaving || isFormDisabled || location.trim().length === 0}
-        style={{
-          padding: '0.5rem 1rem',
-          borderRadius: '0.25rem',
-          border: '1px solid #0d9488',
-          backgroundColor: isSaving || isFormDisabled ? '#9ca3af' : '#14b8a6',
-          color: '#ffffff',
-          cursor: isSaving || isFormDisabled ? 'not-allowed' : 'pointer',
-          transition: 'background-color 0.2s ease',
-          marginBottom: '1rem',
-        }}
-      >
-        {isSaving ? 'Mentés…' : 'Mentés'}
-      </button>
-      {saveMessage && <p>{saveMessage}</p>}
-      <p>{message}</p>
 
       <section
         style={{
@@ -1353,9 +1463,25 @@ function App() {
           borderTop: '1px solid #e5e7eb',
         }}
       >
-        <h2 style={{ fontSize: '1.25rem', marginBottom: '1rem' }}>Aktuális időjárási adatok</h2>
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={isSaving || isFormDisabled || location.trim().length === 0}
+          style={{
+            padding: '0.5rem 1rem',
+            borderRadius: '0.25rem',
+            border: '1px solid #0d9488',
+            backgroundColor: isSaving || isFormDisabled ? '#9ca3af' : '#14b8a6',
+            color: '#ffffff',
+            cursor: isSaving || isFormDisabled ? 'not-allowed' : 'pointer',
+            transition: 'background-color 0.2s ease',
+            marginBottom: '1rem',
+          }}
+        >
+          {isSaving ? 'Mentés…' : 'Mentés'}
+        </button>
         {!user ? (
-          <p>Jelentkezz be és adj meg helyszínt, hogy lásd az időjárási adatokat.</p>
+          <p>Jelentkezz be és adj meg helyszínt, hogy lásd az adatokat.</p>
         ) : weatherLoading ? (
           <p>Időjárási adatok betöltése…</p>
         ) : weatherError ? (
@@ -1363,9 +1489,9 @@ function App() {
         ) : weatherData ? (
           <div
             style={{
-              display: 'grid',
+              display: 'flex',
+              flexDirection: 'column',
               gap: '1rem',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
               padding: '1.5rem',
               borderRadius: '0.75rem',
               border: '1px solid #cbd5f5',
@@ -1374,18 +1500,277 @@ function App() {
             }}
           >
             <div>
-              <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.1rem' }}>{weatherData.locationName}</h3>
-              <p style={{ margin: 0 }}>
-                Légnyomás: {weatherData.pressureHpa.toFixed(0)} hPa ({weatherData.pressureTrend})
-              </p>
-            </div>
-            <div>
-              <p style={{ margin: 0 }}>
+              <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                {weatherData.locationName}
+                {coordinates && (
+                  <span
+                    style={{
+                      position: 'relative',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: '14px',
+                      height: '14px',
+                      borderRadius: '50%',
+                      backgroundColor: '#94a3b8',
+                      color: '#ffffff',
+                      fontSize: '10px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      marginLeft: '0.25rem',
+                    }}
+                    onMouseEnter={(e) => {
+                      const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
+                      if (tooltip) {
+                        tooltip.style.opacity = '1'
+                        tooltip.style.visibility = 'visible'
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
+                      if (tooltip) {
+                        tooltip.style.opacity = '0'
+                        tooltip.style.visibility = 'hidden'
+                      }
+                    }}
+                  >
+                    i
+                    <span
+                      data-tooltip
+                      style={{
+                        position: 'absolute',
+                        bottom: '100%',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        marginBottom: '5px',
+                        padding: '6px 10px',
+                        backgroundColor: '#1e293b',
+                        color: '#ffffff',
+                        borderRadius: '4px',
+                        fontSize: '12px',
+                        whiteSpace: 'nowrap',
+                        zIndex: 1000,
+                        pointerEvents: 'none',
+                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+                        opacity: 0,
+                        visibility: 'hidden',
+                        transition: 'opacity 0.2s, visibility 0.2s',
+                      }}
+                    >
+                      Koordináták: {coordinates.lat.toFixed(4)}, {coordinates.lon.toFixed(4)}
+                    </span>
+                  </span>
+                )}
+              </h3>
+              {waterData?.water && (
+                <p style={{ margin: '0 0 0.5rem', fontSize: '0.9rem', color: '#475569', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                  <strong>{waterData.water}</strong>
+                  {waterData.station && (
+                    <span
+                      style={{
+                        position: 'relative',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '14px',
+                        height: '14px',
+                        borderRadius: '50%',
+                        backgroundColor: '#94a3b8',
+                        color: '#ffffff',
+                        fontSize: '10px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        marginLeft: '0.25rem',
+                      }}
+                      onMouseEnter={(e) => {
+                        const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
+                        if (tooltip) {
+                          tooltip.style.opacity = '1'
+                          tooltip.style.visibility = 'visible'
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
+                        if (tooltip) {
+                          tooltip.style.opacity = '0'
+                          tooltip.style.visibility = 'hidden'
+                        }
+                      }}
+                    >
+                      i
+                      <span
+                        data-tooltip
+                        style={{
+                          position: 'absolute',
+                          bottom: '100%',
+                          left: '50%',
+                          transform: 'translateX(-50%)',
+                          marginBottom: '5px',
+                          padding: '6px 10px',
+                          backgroundColor: '#1e293b',
+                          color: '#ffffff',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          whiteSpace: 'nowrap',
+                          zIndex: 1000,
+                          pointerEvents: 'none',
+                          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+                          opacity: 0,
+                          visibility: 'hidden',
+                          transition: 'opacity 0.2s, visibility 0.2s',
+                        }}
+                      >
+                        Legközelebbi mérőállomás: {waterData.station}
+                      </span>
+                    </span>
+                  )}
+                </p>
+              )}
+              {waterData?.measurements && waterData.measurements.length > 0 && (
+                <p style={{ margin: '0 0 0.5rem', fontWeight: 600, fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                  Vízállás: {waterData.measurements[waterData.measurements.length - 1].value.toFixed(1)}{' '}
+                  {waterData.unit || 'cm'}
+                  <span
+                    style={{
+                      position: 'relative',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: '14px',
+                      height: '14px',
+                      borderRadius: '50%',
+                      backgroundColor: '#94a3b8',
+                      color: '#ffffff',
+                      fontSize: '10px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      marginLeft: '0.25rem',
+                    }}
+                    onMouseEnter={(e) => {
+                      const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
+                      if (tooltip) {
+                        tooltip.style.opacity = '1'
+                        tooltip.style.visibility = 'visible'
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
+                      if (tooltip) {
+                        tooltip.style.opacity = '0'
+                        tooltip.style.visibility = 'hidden'
+                      }
+                    }}
+                  >
+                    i
+                    <span
+                      data-tooltip
+                      style={{
+                        position: 'absolute',
+                        bottom: '100%',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        marginBottom: '5px',
+                        padding: '6px 10px',
+                        backgroundColor: '#1e293b',
+                        color: '#ffffff',
+                        borderRadius: '4px',
+                        fontSize: '12px',
+                        whiteSpace: 'nowrap',
+                        zIndex: 1000,
+                        pointerEvents: 'none',
+                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+                        opacity: 0,
+                        visibility: 'hidden',
+                        transition: 'opacity 0.2s, visibility 0.2s',
+                      }}
+                    >
+                      Mérés dátuma: {new Date(waterData.measurements[waterData.measurements.length - 1].date).toLocaleString('hu-HU')}
+                    </span>
+                  </span>
+                </p>
+              )}
+              {waterTemperatureLoading ? (
+                <p style={{ margin: '0 0 0.5rem', fontSize: '0.9rem', color: '#64748b' }}>
+                  Vízhőmérséklet betöltése…
+                </p>
+              ) : waterTemperatureError ? (
+                <p style={{ margin: '0 0 0.5rem', fontSize: '0.9rem', color: '#ef4444' }}>
+                  ⚠️ {waterTemperatureError}
+                </p>
+              ) : waterTemperatureData && waterTemperatureData.measurements && waterTemperatureData.measurements.length > 0 && waterTemperatureData.measurements[waterTemperatureData.measurements.length - 1].value != null ? (
+                <p style={{ margin: '0 0 0.5rem', fontWeight: 600, fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                  Vízhőmérséklet: {typeof waterTemperatureData.measurements[waterTemperatureData.measurements.length - 1].value === 'number' ? waterTemperatureData.measurements[waterTemperatureData.measurements.length - 1].value.toFixed(1) : waterTemperatureData.measurements[waterTemperatureData.measurements.length - 1].value}{' '}
+                  {waterTemperatureData.unit || '°C'}
+                  <span
+                    style={{
+                      position: 'relative',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: '14px',
+                      height: '14px',
+                      borderRadius: '50%',
+                      backgroundColor: '#94a3b8',
+                      color: '#ffffff',
+                      fontSize: '10px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      marginLeft: '0.25rem',
+                    }}
+                    onMouseEnter={(e) => {
+                      const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
+                      if (tooltip) {
+                        tooltip.style.opacity = '1'
+                        tooltip.style.visibility = 'visible'
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
+                      if (tooltip) {
+                        tooltip.style.opacity = '0'
+                        tooltip.style.visibility = 'hidden'
+                      }
+                    }}
+                  >
+                    i
+                    <span
+                      data-tooltip
+                      style={{
+                        position: 'absolute',
+                        bottom: '100%',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        marginBottom: '5px',
+                        padding: '6px 10px',
+                        backgroundColor: '#1e293b',
+                        color: '#ffffff',
+                        borderRadius: '4px',
+                        fontSize: '12px',
+                        whiteSpace: 'nowrap',
+                        zIndex: 1000,
+                        pointerEvents: 'none',
+                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+                        opacity: 0,
+                        visibility: 'hidden',
+                        transition: 'opacity 0.2s, visibility 0.2s',
+                      }}
+                    >
+                      Mérés dátuma: {new Date(waterTemperatureData.measurements[waterTemperatureData.measurements.length - 1].date).toLocaleString('hu-HU')}
+                    </span>
+                  </span>
+                </p>
+              ) : !waterTemperatureLoading && waterTemperatureVarId ? (
+                <p style={{ margin: '0 0 0.5rem', fontSize: '0.9rem', color: '#ef4444' }}>
+                  ⚠️ Nincs vízhőmérséklet adat elérhető
+                </p>
+              ) : null}
+              <p style={{ margin: '0 0 0.5rem', fontSize: '0.9rem', color: '#475569' }}>
                 Levegő hőmérséklet: {weatherData.airTemperatureC.toFixed(1)} °C
               </p>
-            </div>
-            <div>
-              <p style={{ margin: '0 0 0.25rem' }}>
+              <p style={{ margin: '0 0 0.5rem' }}>
+                Légnyomás: {weatherData.pressureHpa.toFixed(0)} hPa ({weatherData.pressureTrend})
+              </p>
+              <p style={{ margin: '0 0 0.5rem' }}>
                 Szél: {weatherData.windDirection} {weatherData.windSpeedKph.toFixed(1)} km/h
               </p>
               <p style={{ margin: 0 }}>
@@ -1400,146 +1785,13 @@ function App() {
               <p style={{ margin: 0 }}>
                 Napkelte: {weatherData.sunrise} &nbsp;|&nbsp; Napnyugta: {weatherData.sunset}
               </p>
-              <p style={{ margin: '0.25rem 0 0' }}>Holdfázis: {weatherData.moonPhase}</p>
+            </div>
+            <div>
+              <p style={{ margin: 0 }}>Holdfázis: {weatherData.moonPhase}</p>
             </div>
           </div>
         ) : (
           <p>Még nincs időjárási adat. Adj meg helyszínt és mentsd el.</p>
-        )}
-      </section>
-
-      <section
-        style={{
-          marginTop: '2rem',
-          paddingTop: '1.5rem',
-          borderTop: '1px solid #e5e7eb',
-        }}
-      >
-        <h2 style={{ fontSize: '1.25rem', marginBottom: '1rem' }}>Aktuális vízállás a legközelebbi mérőállomáson</h2>
-        {!user ? (
-          <p>Jelentkezz be és adj meg helyszínt, hogy lásd a vízállás adatokat.</p>
-        ) : !coordinates ? (
-          <p>Adj meg egy helyszínt koordinátákkal, hogy lássd a vízállás adatokat.</p>
-        ) : waterLoading ? (
-          <p>Vízállás adatok betöltése…</p>
-        ) : waterError ? (
-          <p style={{ color: '#dc2626' }}>{waterError}</p>
-        ) : waterData ? (
-          <div
-            style={{
-              display: 'grid',
-              gap: '1rem',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-              padding: '1.5rem',
-              borderRadius: '0.75rem',
-              border: '1px solid #cbd5f5',
-              backgroundColor: '#f1f5f9',
-              color: '#0f172a',
-            }}
-          >
-            <div>
-              <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.1rem' }}>
-                {waterData.station || 'Ismeretlen állomás'}
-              </h3>
-              {waterData.water && (
-                <p style={{ margin: 0, fontSize: '0.9rem', color: '#475569' }}>Víztest: {waterData.water}</p>
-              )}
-              {waterData.variable && (
-                <p style={{ margin: '0.25rem 0 0', fontSize: '0.9rem', color: '#475569' }}>
-                  Paraméter: {waterData.variable}
-                </p>
-              )}
-              {waterData.distance !== undefined && waterData.distance_unit && (
-                <p style={{ margin: '0.25rem 0 0', fontSize: '0.9rem', color: '#475569' }}>
-                  Távolság: {waterData.distance.toFixed(1)} {waterData.distance_unit}
-                </p>
-              )}
-            </div>
-            {waterData.measurements && waterData.measurements.length > 0 ? (
-              <>
-                <div>
-                  <p style={{ margin: 0, fontWeight: 600, fontSize: '1.1rem' }}>
-                    Vízállás: {waterData.measurements[waterData.measurements.length - 1].value.toFixed(1)}{' '}
-                    {waterData.unit || 'cm'}
-                  </p>
-                  <p style={{ margin: '0.5rem 0 0', fontSize: '0.9rem', color: '#475569' }}>
-                    Mérés dátuma:{' '}
-                    {new Date(waterData.measurements[waterData.measurements.length - 1].date).toLocaleString('hu-HU')}
-                  </p>
-                </div>
-                {waterTemperatureLoading ? (
-                  <div>
-                    <p style={{ margin: '0.5rem 0 0', fontSize: '0.9rem', color: '#64748b' }}>
-                      Vízhőmérséklet betöltése…
-                    </p>
-                  </div>
-                ) : waterTemperatureError ? (
-                  <div>
-                    <p style={{ margin: '0.5rem 0 0', fontSize: '0.9rem', color: '#ef4444' }}>
-                      ⚠️ {waterTemperatureError}
-                    </p>
-                  </div>
-                ) : waterTemperatureData && waterTemperatureData.measurements && waterTemperatureData.measurements.length > 0 && waterTemperatureData.measurements[waterTemperatureData.measurements.length - 1].value != null ? (
-                  <div>
-                    <p style={{ margin: '0.5rem 0 0', fontWeight: 600, fontSize: '1.1rem' }}>
-                      Vízhőmérséklet: {typeof waterTemperatureData.measurements[waterTemperatureData.measurements.length - 1].value === 'number' ? waterTemperatureData.measurements[waterTemperatureData.measurements.length - 1].value.toFixed(1) : waterTemperatureData.measurements[waterTemperatureData.measurements.length - 1].value}{' '}
-                      {waterTemperatureData.unit || '°C'}
-                    </p>
-                    <p style={{ margin: '0.5rem 0 0', fontSize: '0.9rem', color: '#475569' }}>
-                      Mérés dátuma:{' '}
-                      {new Date(waterTemperatureData.measurements[waterTemperatureData.measurements.length - 1].date).toLocaleString('hu-HU')}
-                    </p>
-                  </div>
-                ) : !waterTemperatureLoading && waterTemperatureVarId ? (
-                  <div>
-                    <p style={{ margin: '0.5rem 0 0', fontSize: '0.9rem', color: '#ef4444' }}>
-                      ⚠️ Nincs vízhőmérséklet adat elérhető
-                    </p>
-                  </div>
-                ) : null}
-                {waterData.lat && waterData.lon && (
-                  <div>
-                    <p style={{ margin: 0, fontSize: '0.9rem' }}>
-                      Koordináták: {waterData.lat.toFixed(4)}, {waterData.lon.toFixed(4)}
-                    </p>
-                  </div>
-                )}
-                {stationDetails && (
-                  <div>
-                    <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600, color: '#475569' }}>
-                      Állomás részletes adatai:
-                    </p>
-                    {stationDetails.fkm !== undefined && (
-                      <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: '#64748b' }}>
-                        Folyamkilométer: {stationDetails.fkm} km
-                      </p>
-                    )}
-                    {stationDetails.nullpoint !== undefined && (
-                      <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: '#64748b' }}>
-                        Vízmérce magassága: {stationDetails.nullpoint} m
-                      </p>
-                    )}
-                    {stationDetails.lkv !== undefined && (
-                      <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: '#64748b' }}>
-                        Legkisebb mért vízszint: {stationDetails.lkv} cm
-                      </p>
-                    )}
-                    {stationDetails.lnv !== undefined && (
-                      <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: '#64748b' }}>
-                        Legnagyobb mért vízszint: {stationDetails.lnv} cm
-                      </p>
-                    )}
-                  </div>
-                )}
-              </>
-            ) : (
-              <div>
-                <p style={{ margin: 0, color: '#64748b' }}>Nincs elérhető mérési adat.</p>
-              </div>
-            )}
-          </div>
-        ) : (
-          <p>Még nincs vízállás adat. Adj meg helyszínt koordinátákkal.</p>
         )}
       </section>
 
@@ -1581,26 +1833,119 @@ function App() {
                       ? parseFloat(lastMeasurement.value)
                       : lastMeasurement.value)
                   : null
-                const trend = currentWaterLevel !== null ? calculateTrend(firstForecast.forecasts, currentWaterLevel) : null
+                // Számoljuk a tendenciát a megjelenített adatokból (előző 3 nap + mai nap + következő 3 nap)
+                // Ugyanazokat az adatokat használjuk, mint amit a grafikonon megjelenítünk
+                let trend = null
+                if (pastWaterLevelData && pastWaterLevelData.length >= 3 && firstForecast.forecasts && firstForecast.forecasts.length > 0) {
+                  // Összegyűjtjük az adatokat - csak azokat, amik ténylegesen megjelennek
+                  // (előző 3 nap + következő 3 nap előrejelzés, a mai nap NINCS benne)
+                  const chartData: Array<{ date: Date; value: number }> = []
+                  
+                  // Előző 3 nap (megjelenített adatok)
+                  if (pastWaterLevelData && pastWaterLevelData.length > 0) {
+                    pastWaterLevelData.forEach((item) => {
+                      const value = typeof item.measurement.value === 'string' ? parseFloat(item.measurement.value) : item.measurement.value
+                      const date = new Date(item.measurement.date)
+                      chartData.push({ date, value })
+                    })
+                  }
+                  
+                  // Következő 3 nap (előrejelzés) - ugyanazt a logikát használjuk, mint a megjelenítésben
+                  const dailyForecasts = firstForecast.forecasts.reduce((acc: typeof firstForecast.forecasts, forecast) => {
+                    const date = new Date(forecast.date)
+                    const dateKey = date.toISOString().split('T')[0]
+                    const existing = acc.find((f) => {
+                      const fDate = new Date(f.date)
+                      return fDate.toISOString().split('T')[0] === dateKey
+                    })
+                    if (!existing) {
+                      acc.push(forecast)
+                    } else {
+                      const existingHour = new Date(existing.date).getHours()
+                      const currentHour = date.getHours()
+                      const existingDiff = Math.abs(existingHour - 12)
+                      const currentDiff = Math.abs(currentHour - 12)
+                      if (currentDiff < existingDiff) {
+                        const index = acc.indexOf(existing)
+                        acc[index] = forecast
+                      }
+                    }
+                    return acc
+                  }, [])
+                  
+                  // Kizárjuk az aktuális nap értékét, pontosan úgy, mint a megjelenítésben
+                  const today = new Date()
+                  today.setHours(0, 0, 0, 0)
+                  const filteredForecasts = dailyForecasts.filter((forecast) => {
+                    const forecastDate = new Date(forecast.date)
+                    forecastDate.setHours(0, 0, 0, 0)
+                    return forecastDate.getTime() !== today.getTime()
+                  })
+                  
+                  // Csak a következő 3 nap adatait használjuk, pontosan úgy, mint a megjelenítésben
+                  const futureForecasts = filteredForecasts.filter((forecast) => {
+                    const forecastDate = new Date(forecast.date)
+                    forecastDate.setHours(0, 0, 0, 0)
+                    return forecastDate.getTime() > today.getTime()
+                  }).slice(0, 3)
+                  
+                  futureForecasts.forEach((forecast) => {
+                    const value = typeof forecast.value === 'string' ? parseFloat(forecast.value) : forecast.value
+                    const date = new Date(forecast.date)
+                    chartData.push({ date, value })
+                  })
+                  
+                  // Rendezzük dátum szerint
+                  chartData.sort((a, b) => a.date.getTime() - b.date.getTime())
+                  
+                  // Kiszámoljuk a megjelenített adatokból a legkisebb és legnagyobb értéket
+                  const allValues = chartData.map(d => d.value)
+                  
+                  if (allValues.length > 0) {
+                    const minValue = Math.min(...allValues)
+                    const maxValue = Math.max(...allValues)
+                    // A legkisebbet vonjuk ki a legnagyobból
+                    const change = maxValue - minValue
+                    
+                    // Százalékos változás a legkisebb értékhez képest
+                    const percentChange = minValue !== 0 ? (change / Math.abs(minValue)) * 100 : 0
+                    const threshold = Math.max(Math.abs(minValue) * 0.05, 10)
+                    
+                    if (Math.abs(change) < threshold) {
+                      trend = {
+                        type: 'stable' as const,
+                        change: change,
+                        percentChange: percentChange,
+                        days: 6,
+                      }
+                    } else {
+                      // A trend típusa attól függ, hogy az első és utolsó érték összehasonlítása
+                      const lastValue = allValues[allValues.length - 1]
+                      const firstValue = allValues[0]
+                      
+                      if (lastValue > firstValue) {
+                        trend = {
+                          type: 'increasing' as const,
+                          change: change,
+                          percentChange: percentChange,
+                          days: 6,
+                        }
+                      } else {
+                        trend = {
+                          type: 'decreasing' as const,
+                          change: change,
+                          percentChange: percentChange,
+                          days: 6,
+                        }
+                      }
+                    }
+                  }
+                } else if (currentWaterLevel !== null) {
+                  // Ha nincs elég adat, az eredeti módszert használjuk
+                  trend = calculateTrend(firstForecast.forecasts, currentWaterLevel)
+                }
                 return (
                   <>
-                    {isFromDifferentStation && (
-                      <div
-                        style={{
-                          gridColumn: '1 / -1',
-                          padding: '0.75rem',
-                          borderRadius: '0.5rem',
-                          backgroundColor: '#e0f2fe',
-                          border: '1px solid #0ea5e9',
-                          marginBottom: '0.5rem',
-                        }}
-                      >
-                        <p style={{ margin: 0, fontSize: '0.9rem', color: '#0c4a6e' }}>
-                          ℹ️ Az előrejelzés a legközelebbi állomásról származik ({firstForecast.station || 'Ismeretlen állomás'})
-                          {firstForecast.water && ` - ${firstForecast.water}`}
-                        </p>
-                      </div>
-                    )}
                     {trend && (
                       <div
                         style={{
@@ -1611,23 +1956,107 @@ function App() {
                           border: `2px solid ${trend.type === 'increasing' ? '#f59e0b' : trend.type === 'decreasing' ? '#ef4444' : '#9ca3af'}`,
                         }}
                       >
-                        <p style={{ margin: 0, fontWeight: 600, fontSize: '1.1rem' }}>
+                        <p style={{ margin: 0, fontWeight: 600, fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                           {trend.type === 'increasing' && '📈 '}
                           {trend.type === 'decreasing' && '📉 '}
                           {trend.type === 'stable' && '➡️ '}
-                          {trend.type === 'increasing' && 'Növekvő tendencia várható'}
-                          {trend.type === 'decreasing' && 'Csökkenő tendencia várható'}
-                          {trend.type === 'stable' && 'Stabil vízállás várható'}
+                          {trend.type === 'increasing' && 'Növekvő tendencia'}
+                          {trend.type === 'decreasing' && 'Csökkenő tendencia'}
+                          {trend.type === 'stable' && 'Stabil vízállás'}
+                          {(isFromDifferentStation || firstForecast.station) && (
+                            <span
+                              style={{
+                                position: 'relative',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: '14px',
+                                height: '14px',
+                                borderRadius: '50%',
+                                backgroundColor: '#94a3b8',
+                                color: '#ffffff',
+                                fontSize: '10px',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                marginLeft: '0.25rem',
+                              }}
+                              onMouseEnter={(e) => {
+                                const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
+                                if (tooltip) {
+                                  tooltip.style.opacity = '1'
+                                  tooltip.style.visibility = 'visible'
+                                }
+                              }}
+                              onMouseLeave={(e) => {
+                                const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
+                                if (tooltip) {
+                                  tooltip.style.opacity = '0'
+                                  tooltip.style.visibility = 'hidden'
+                                }
+                              }}
+                            >
+                              i
+                              <span
+                                data-tooltip
+                                style={{
+                                  position: 'absolute',
+                                  bottom: '100%',
+                                  left: '50%',
+                                  transform: 'translateX(-50%)',
+                                  marginBottom: '5px',
+                                  padding: '6px 10px',
+                                  backgroundColor: '#1e293b',
+                                  color: '#ffffff',
+                                  borderRadius: '4px',
+                                  fontSize: '12px',
+                                  whiteSpace: 'nowrap',
+                                  zIndex: 1000,
+                                  pointerEvents: 'none',
+                                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+                                  opacity: 0,
+                                  visibility: 'hidden',
+                                  transition: 'opacity 0.2s, visibility 0.2s',
+                                }}
+                              >
+                                Az előrejelzés a legközelebbi állomásról származik ({firstForecast.station || 'Ismeretlen állomás'})
+                                {firstForecast.water && ` - ${firstForecast.water}`}
+                              </span>
+                            </span>
+                          )}
                         </p>
                         <p style={{ margin: '0.5rem 0 0', fontSize: '0.9rem', color: '#475569' }}>
-                          {trend.type === 'increasing' && `+${Math.abs(trend.change).toFixed(1)} ${firstForecast.unit || 'cm'}`}
-                          {trend.type === 'decreasing' && `-${Math.abs(trend.change).toFixed(1)} ${firstForecast.unit || 'cm'}`}
-                          {trend.type === 'stable' && `${Math.abs(trend.change).toFixed(1)} ${firstForecast.unit || 'cm'}`}
-                          {' '}változás várható a következő {trend.days} napban
-                          {Math.abs(trend.percentChange) > 1 && ` (${trend.percentChange > 0 ? '+' : ''}${trend.percentChange.toFixed(1)}%)`}
+                          {trend.type === 'increasing' && `+${Math.round(Math.abs(trend.change))} ${firstForecast.unit || waterData.unit || 'cm'}`}
+                          {trend.type === 'decreasing' && `-${Math.round(Math.abs(trend.change))} ${firstForecast.unit || waterData.unit || 'cm'}`}
+                          {trend.type === 'stable' && `${Math.round(Math.abs(trend.change))} ${firstForecast.unit || waterData.unit || 'cm'}`}
+                          {' '}változás a héten
                         </p>
                       </div>
                     )}
+                    {pastWaterLevelLoading ? (
+                      <div>
+                        <p style={{ margin: '0 0 0.5rem', fontWeight: 600, fontSize: '1rem' }}>Előző 3 nap vízállása:</p>
+                        <p style={{ margin: '0.25rem 0', fontSize: '0.9rem', color: '#64748b' }}>Betöltés…</p>
+                      </div>
+                    ) : pastWaterLevelError ? (
+                      <div>
+                        <p style={{ margin: '0 0 0.5rem', fontWeight: 600, fontSize: '1rem' }}>Előző 3 nap vízállása:</p>
+                        <p style={{ margin: '0.25rem 0', fontSize: '0.9rem', color: '#ef4444' }}>{pastWaterLevelError}</p>
+                      </div>
+                    ) : pastWaterLevelData && pastWaterLevelData.length > 0 ? (
+                      <div>
+                        <p style={{ margin: '0 0 0.5rem', fontWeight: 600, fontSize: '1rem' }}>Előző 3 nap vízállása:</p>
+                        {pastWaterLevelData.map((item, idx) => {
+                          const value = typeof item.measurement.value === 'string' ? parseFloat(item.measurement.value) : item.measurement.value
+                          const date = new Date(item.measurement.date)
+                          return (
+                            <p key={idx} style={{ margin: '0.25rem 0', fontSize: '0.9rem', color: '#475569' }}>
+                              {date.toLocaleDateString('hu-HU', { month: 'short', day: 'numeric', weekday: 'short' })}:{' '}
+                              {Math.round(value)} {item.entry.unit || waterData.unit || 'cm'}
+                            </p>
+                          )
+                        })}
+                      </div>
+                    ) : null}
                     <div>
                       <p style={{ margin: '0 0 0.5rem', fontWeight: 600, fontSize: '1rem' }}>Előrejelzési értékek:</p>
                       {(() => {
@@ -1669,20 +2098,315 @@ function App() {
                           return forecastDate.getTime() !== today.getTime()
                         })
                         
-                        return filteredForecasts.slice(0, 5).map((forecast, idx) => {
+                        // Csak a következő 3 nap adatait jelenítjük meg
+                        return filteredForecasts.slice(0, 3).map((forecast, idx) => {
                           const value = typeof forecast.value === 'string' ? parseFloat(forecast.value) : forecast.value
                           const conf = typeof forecast.conf === 'string' ? parseFloat(forecast.conf) : forecast.conf
                           const date = new Date(forecast.date)
                           return (
-                            <p key={idx} style={{ margin: '0.25rem 0', fontSize: '0.9rem', color: '#475569' }}>
+                            <p key={idx} style={{ margin: '0.25rem 0', fontSize: '0.9rem', color: '#475569', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                               {date.toLocaleDateString('hu-HU', { month: 'short', day: 'numeric', weekday: 'short' })}:{' '}
-                              {value.toFixed(1)} {firstForecast.unit || 'cm'}
-                              {conf !== undefined && !isNaN(conf) && ` (${conf.toFixed(0)}% megbízhatóság)`}
+                              {Math.round(value)} {firstForecast.unit || 'cm'}
+                              {conf !== undefined && !isNaN(conf) && (
+                                <span
+                                  style={{
+                                    position: 'relative',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    width: '14px',
+                                    height: '14px',
+                                    borderRadius: '50%',
+                                    backgroundColor: '#94a3b8',
+                                    color: '#ffffff',
+                                    fontSize: '10px',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    marginLeft: '0.25rem',
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
+                                    if (tooltip) {
+                                      tooltip.style.opacity = '1'
+                                      tooltip.style.visibility = 'visible'
+                                    }
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
+                                    if (tooltip) {
+                                      tooltip.style.opacity = '0'
+                                      tooltip.style.visibility = 'hidden'
+                                    }
+                                  }}
+                                >
+                                  i
+                                  <span
+                                    data-tooltip
+                                    style={{
+                                      position: 'absolute',
+                                      bottom: '100%',
+                                      left: '50%',
+                                      transform: 'translateX(-50%)',
+                                      marginBottom: '5px',
+                                      padding: '6px 10px',
+                                      backgroundColor: '#1e293b',
+                                      color: '#ffffff',
+                                      borderRadius: '4px',
+                                      fontSize: '12px',
+                                      whiteSpace: 'nowrap',
+                                      zIndex: 1000,
+                                      pointerEvents: 'none',
+                                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+                                      opacity: 0,
+                                      visibility: 'hidden',
+                                      transition: 'opacity 0.2s, visibility 0.2s',
+                                    }}
+                                  >
+                                    {conf.toFixed(0)}% hibahatár
+                                  </span>
+                                </span>
+                              )}
                             </p>
                           )
                         })
                       })()}
                     </div>
+                    {/* Grafikon: előző 3 nap, mai nap, következő 3 nap */}
+                    {(() => {
+                      // Összegyűjtjük az adatokat a grafikonthoz
+                      const chartData: Array<{ date: Date; value: number; isPast: boolean; isToday: boolean; isFuture: boolean }> = []
+                      
+                      // Előző 3 nap
+                      if (pastWaterLevelData && pastWaterLevelData.length > 0) {
+                        pastWaterLevelData.forEach((item) => {
+                          const value = typeof item.measurement.value === 'string' ? parseFloat(item.measurement.value) : item.measurement.value
+                          const date = new Date(item.measurement.date)
+                          chartData.push({ date, value, isPast: true, isToday: false, isFuture: false })
+                        })
+                      }
+                      
+                      // Mai nap
+                      if (currentWaterLevel !== null) {
+                        const today = new Date()
+                        chartData.push({ date: today, value: currentWaterLevel, isPast: false, isToday: true, isFuture: false })
+                      }
+                      
+                      // Következő 3 nap (előrejelzés)
+                      const dailyForecasts = firstForecast.forecasts.reduce((acc: typeof firstForecast.forecasts, forecast) => {
+                        const date = new Date(forecast.date)
+                        const dateKey = date.toISOString().split('T')[0]
+                        const existing = acc.find((f) => {
+                          const fDate = new Date(f.date)
+                          return fDate.toISOString().split('T')[0] === dateKey
+                        })
+                        if (!existing) {
+                          acc.push(forecast)
+                        } else {
+                          const existingHour = new Date(existing.date).getHours()
+                          const currentHour = date.getHours()
+                          const existingDiff = Math.abs(existingHour - 12)
+                          const currentDiff = Math.abs(currentHour - 12)
+                          if (currentDiff < existingDiff) {
+                            const index = acc.indexOf(existing)
+                            acc[index] = forecast
+                          }
+                        }
+                        return acc
+                      }, [])
+                      
+                      const today = new Date()
+                      today.setHours(0, 0, 0, 0)
+                      const futureForecasts = dailyForecasts.filter((forecast) => {
+                        const forecastDate = new Date(forecast.date)
+                        forecastDate.setHours(0, 0, 0, 0)
+                        return forecastDate.getTime() > today.getTime()
+                      }).slice(0, 3)
+                      
+                      futureForecasts.forEach((forecast) => {
+                        const value = typeof forecast.value === 'string' ? parseFloat(forecast.value) : forecast.value
+                        const date = new Date(forecast.date)
+                        chartData.push({ date, value, isPast: false, isToday: false, isFuture: true })
+                      })
+                      
+                      // Rendezzük dátum szerint
+                      chartData.sort((a, b) => a.date.getTime() - b.date.getTime())
+                      
+                      if (chartData.length === 0) {
+                        return null
+                      }
+                      
+                      // Fix skála: -100 és 800 cm között
+                      const minValue = -100
+                      const maxValue = 800
+                      const range = maxValue - minValue // 900
+                      
+                      // Grafikon méretek
+                      const width = 600
+                      const height = 250
+                      const padding = { top: 20, right: 20, bottom: 50, left: 50 }
+                      const chartWidth = width - padding.left - padding.right
+                      const chartHeight = height - padding.top - padding.bottom
+                      
+                      // Pontok koordinátái
+                      const points = chartData.map((data, index) => {
+                        const x = padding.left + (index / (chartData.length - 1 || 1)) * chartWidth
+                        const y = padding.top + chartHeight - ((data.value - minValue) / range) * chartHeight
+                        return { x, y, ...data }
+                      })
+                      
+                      // Vonal path
+                      const pathData = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')
+                      
+                        return (
+                          <div style={{ gridColumn: '1 / -1', marginTop: '1.5rem' }}>
+                          <p style={{ margin: '0 0 0.5rem', fontWeight: 600, fontSize: '1rem' }}>Vízállás grafikon (7 nap):</p>
+                          <div style={{ position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '1rem', backgroundColor: '#ffffff', borderRadius: '0.5rem', border: '1px solid #e2e8f0' }}>
+                            <svg width={width} height={height} style={{ overflow: 'visible' }}>
+                              {/* Y tengely skála */}
+                              {[0, 0.25, 0.5, 0.75, 1].map((ratio) => {
+                                const value = minValue + range * ratio
+                                const y = padding.top + chartHeight - ratio * chartHeight
+                                return (
+                                  <g key={ratio}>
+                                    <line
+                                      x1={padding.left - 5}
+                                      y1={y}
+                                      x2={padding.left}
+                                      y2={y}
+                                      stroke="#cbd5e1"
+                                      strokeWidth="1"
+                                    />
+                                    <text
+                                      x={padding.left - 10}
+                                      y={y + 4}
+                                      textAnchor="end"
+                                      fontSize="10"
+                                      fill="#64748b"
+                                    >
+                                      {value.toFixed(0)} cm
+                                    </text>
+                                  </g>
+                                )
+                              })}
+                              
+                              {/* Grid vonalak */}
+                              {[0, 0.25, 0.5, 0.75, 1].map((ratio) => {
+                                const y = padding.top + chartHeight - ratio * chartHeight
+                                return (
+                                  <line
+                                    key={`grid-${ratio}`}
+                                    x1={padding.left}
+                                    y1={y}
+                                    x2={padding.left + chartWidth}
+                                    y2={y}
+                                    stroke="#e2e8f0"
+                                    strokeWidth="1"
+                                    strokeDasharray="2,2"
+                                  />
+                                )
+                              })}
+                              
+                              {/* Vonal */}
+                              <path
+                                d={pathData}
+                                fill="none"
+                                stroke="#3b82f6"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                              
+                              {/* Pontok */}
+                              {points.map((point, index) => {
+                                const isPast = point.isPast
+                                const isToday = point.isToday
+                                const isFuture = point.isFuture
+                                let color = '#3b82f6'
+                                let radius = 8
+                                
+                                if (isPast) {
+                                  color = '#64748b'
+                                } else if (isToday) {
+                                  color = '#10b981'
+                                  radius = 10
+                                } else if (isFuture) {
+                                  color = '#f59e0b'
+                                }
+                                
+                                return (
+                                  <g key={index}>
+                                    <circle
+                                      cx={point.x}
+                                      cy={point.y}
+                                      r={radius}
+                                      fill={color}
+                                      stroke="#ffffff"
+                                      strokeWidth="3"
+                                      style={{ cursor: 'pointer' }}
+                                      onMouseEnter={() => setHoveredPointIndex(index)}
+                                      onMouseLeave={() => setHoveredPointIndex(null)}
+                                    />
+                                    {/* Dátum címke */}
+                                    <text
+                                      x={point.x}
+                                      y={height - padding.bottom + 15}
+                                      textAnchor="middle"
+                                      fontSize="9"
+                                      fill="#64748b"
+                                    >
+                                      {point.isToday ? 'Mai nap' : point.date.toLocaleDateString('hu-HU', { day: 'numeric', month: 'short' })}
+                                    </text>
+                                  </g>
+                                )
+                              })}
+                              
+                              {/* X tengely */}
+                              <line
+                                x1={padding.left}
+                                y1={padding.top + chartHeight}
+                                x2={padding.left + chartWidth}
+                                y2={padding.top + chartHeight}
+                                stroke="#cbd5e1"
+                                strokeWidth="1"
+                              />
+                              
+                              {/* Y tengely */}
+                              <line
+                                x1={padding.left}
+                                y1={padding.top}
+                                x2={padding.left}
+                                y2={padding.top + chartHeight}
+                                stroke="#cbd5e1"
+                                strokeWidth="1"
+                              />
+                            </svg>
+                            {/* Tooltip */}
+                            {hoveredPointIndex !== null && points[hoveredPointIndex] && (
+                              <div
+                                style={{
+                                  position: 'absolute',
+                                  left: `${points[hoveredPointIndex].x + 20}px`,
+                                  top: `${points[hoveredPointIndex].y + 20 - 35}px`,
+                                  transform: 'translateX(-50%)',
+                                  backgroundColor: '#1e293b',
+                                  color: '#ffffff',
+                                  padding: '0.375rem 0.625rem',
+                                  borderRadius: '0.375rem',
+                                  fontSize: '0.75rem',
+                                  fontWeight: '600',
+                                  whiteSpace: 'nowrap',
+                                  pointerEvents: 'none',
+                                  zIndex: 10,
+                                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                                }}
+                              >
+                                {points[hoveredPointIndex].value.toFixed(1)} {firstForecast.unit || (waterData && waterData.unit) || 'cm'}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })()}
                   </>
                 )
               })()}
