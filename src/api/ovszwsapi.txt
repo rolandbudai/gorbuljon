@@ -1,0 +1,235 @@
+[Az ovszws webszervíz API leírása
+(Utolsó módosítás: 2023-04-25)
+Tartalom
+Leírás	1
+Az API elérhetõsége	1
+Kérések	1
+3.1 getvariables	2
+3.2 getstations	2
+3.3 getwaters	3
+3.4 getinfo	3
+3.5 getmeas	4
+3.6 getnearestmeas	5
+3.7 getvarstat	6
+3.7 getstatvar	7
+3.8 getfc	7
+Hibák	9
+Példa PHP script CURL segítségével	10
+
+Leírás
+Az API segítségével vízügyi adatokat kérhetünk vissza. Az adatokat egy egyedi, felhasználói token segítségével lehet lekérdezni, amelyet az OVF generál és ad át a felhasználónak. Az adatok ingyenesek, de a webszervíz használatához a felhasználónak kapcsolatba kell lépnie az Országos Vízügyi Fõigazgatóság Adattári Osztályával, és a felhasználó ezután kapja meg az egyedi token azonosítóját. Egyedi azonosító nélkül nincs lehetõség adatok lekérésére.
+Az API elérhetõsége
+https://hydroinfo.hu/WSCSS/ovszws/api.php?view=A_kérés_neve[&paraméterek]
+Kérések
+A kérés neveLeírásAttribútumokgetvariablesA rendszer által kezelt paramétereket kéri visszatoken  - user azonosítógetstationsA rendszer által kezelt állomásokat kéri visszatoken  - user azonosítógetwatersA rendszer által kezelt víztesteket kéri visszatoken  - user azonosítógetinfoA rendszer információkat adja visszatoken  - user azonosítógetmeasA rendszerben található méréseket kéri visszatoken  - user azonosító
+statid – az állomás azonosító
+varid – a paraméter azonosító
+waterid – A víztest azonosító
+fromdate – a kezdõdátum
+todate – a befejezõ dátum
+extended  getnearestmeasA megadott földrajzi helyzethez legközelebbi, a rendszerben található állomás méréseit kéri vissza token  - user azonosító
+varid – a paraméter azonosító
+waterid – A víztest azonosító
+lat – földrajzi szélesség koordináta
+lon – földrajzi hosszúság koordináta
+fromdate – a kezdõdátum
+todate – a befejezõ dátum
+extended  getvarstatVisszaadja, hogy a megadott paraméter adatai mely állomásokon elérhetõtoken – user azonosító
+varid – a paraméter azonosítógetstatvarVisszaadja, hogy a megadott állomáson milyen paraméterek adatai érhetõek eltoken – user azonosító
+statid – az állomás azonosítógetfcElõrejelzett értékeket ad vissza a megadott állomásra és paraméterretoken  - user azonosító
+statid – az állomás azonosító
+varid – a paraméter azonosító
+3.1 getvariables
+A függvény segítségével a rendszer által kezelt paraméterek adatai kérhetõek vissza.  
+A kérés attribútumai (a kötelezõen megadandóak pirossal jelezve):
+* token – A felhasználói egyedi azonosító
+A válasz egy JSON string lesz, melyben minden paraméterhez a következõ struktúra tartozik:
+varidA paraméter rendszerbeli azonosítójanameA paraméter magyar nevedescA paraméter leírásaunitA paraméter mértékegysége, amelyben a hozzá tartozó adatok tárolva vannak
+Példa 
+https://hydroinfo.hu/WSCSS/ovszws/api.php?token=egyedi_azonosito&view=getvariables
+
+3.2 getstations
+A függvény segítségével a rendszer által kezelt állomások adatai kérhetõek vissza. 
+A kérés attribútumai (a kötelezõen megadandóak pirossal jelezve):
+* token – A felhasználói egyedi azonosító
+A válasz egy JSON string lesz, amelyben minden állomás a következõ struktúra szerint épül fel:
+statidAz állomás rendszerbeli azonosítójanameAz állomás neveeovxEgységes Országos Vetület alapján vett x koordinátaeovyEgységes Országos Vetület alapján vett y koordinátawaterAz állomáshoz tartozó víztest nevelatFöldrajzi szélesség koordináta (WSG84) lonFöldrajzi hosszúság koordináta (WSG84)fkmA folyamkilométer értéke, azaz a vízmérce a torkolattól számítva ilyen messze található km-ben.nullpointA vízmérce tengerszint feletti magassága méterben.lkvA legkisebb mért vízszint cm-benlnvA legnagyobb mért vízszint cm-ben
+Példa 
+https://hydroinfo.hu/WSCSS/ovszws/api.php?token=egyedi_azonosito&view=getstations
+3.3 getwaters
+A függvény segítségével a rendszer által kezelt víztestek kérhetõek vissza. 
+A kérés attribútumai (a kötelezõen megadandóak pirossal jelezve):
+* token – A felhasználói egyedi azonosító
+A válasz egy JSON string lesz, amelyben minden objektum a következõ struktúra szerint épül fel:
+wateridA víztest rendszerbeli azonosítójanameA víztest neve
+Példa 
+https://hydroinfo.hu/WSCSS/ovszws/api.php?token=egyedi_azonosito&view=getwaters
+3.4 getinfo
+A függvény segítségével rendszerinformációk kérhetõek vissza. 
+A kérés attribútumai (a kötelezõen megadandóak pirossal jelezve):
+* token – A felhasználói egyedi azonosító
+A válasz egy JSON string lesz, amely a következõ struktúra szerint épül fel:
+organizationA webszervízt üzemeltetõ szervezet neveversionA webszervíz verziószámaversionnameA webszervíz verzió nevedocumentationA webszervízhez tartozó dokumentáció (azaz ez) elérhetõsége az internetenlast_changeUtolsó változtatás dátumaurlA webszervíz elérhetõsége az internetencontactA webszervízzel kapcsolatos kérdések, hibák esetén az elérhetõségstation_countA rendszer által kezelt állomások számavariable_countA rendszer által kezelt változók számawater_countA rendszer által kezelt víztestek száma
+Példa 
+https://hydroinfo.hu/WSCSS/ovszws/api.php?token=egyedi_azonosito&view=getinfo
+3.5 getmeas
+A kérés segítségével lehet adatokat lekérdezni a rendszertõl
+A kérés attribútumai (a kötelezõen megadandóak pirossal jelezve):
+* varid – a paraméter azonosító, kötelezõ, a getvariables kéréssel visszakapott paraméter azonosító kerülhet ide
+* token – A felhasználói egyedi azonosító
+* statid – az állomás azonosító, nem kötelezõ, a getstations kéréssel visszakapott állomásazonosító kerülhet ide. Amennyiben nincs megadva statid, akkor az összes állomást visszaadja
+* waterid – a víztest azonosító. Nem kötelezõ megadni, a getwaters kéréssel visszakapott víztest azonosító kerülhet ide. Ha meg van adva, akkor csak azok az állomások kerülnek bele a válaszba, amelyek az adott víztesthez kapcsolódnak. Ha meg van adva a statid attribútum, akkor a waterid-t a rendszer nem veszi figyelembe.
+* fromdate – az adatok visszakérésének kezdõ dátuma YYYY-mm-dd formátumban. Nem kötelezõ megadni. Ha nincs megadva, akkor az utolsó mérést adja vissza az elmúlt 10 napból. Ha 10 napnál régebbi az utolsó mérés, akkor nem ad vissza adatot. Ha nincs megadva a statid, akkor az összes állomásra visszaadja az utolsó mért adatot az elmúlt 10 napból.
+* todate – az adatok visszakérésnek befejezõ dátuma YYYY-mm-dd formátumban. Nem kötelezõ megadni. Csak akkor veszi figyelembe a rendszer, ha meg van adva a fromdate attribútum is. A fromdate és a todate által megadott intervallum legfeljebb 100 nap lehet, ha több, mint 100 nap, akkor csak a fromdate-tõl számított elsõ 100 nap adatait adja vissza.
+* extended  - Ha ez a kapcsoló meg van adva, akkor a válasz tartalmazza az állomás(ok) és a változó alapadatait is.
+A válasz egy JSON string lesz, amely a következõ struktúrát tartalmazza 0..n számban, abban az esetben ha nincs megadva az extended attribútum:
+statidAz állomás rendszerbeli azonosítójameasurementsA mérések adatai.
+A measurements tömb a következõ struktúrát tartalmazza 0…n számban:
+dateA mérés dátuma YYYY-mm-dd HH:ii:ss formában és UTC-benvalueA mért érték
+Ha az extended attribútum meg van adva, akkor a válaszként kapott JSON string a következõképpen változik:
+statidAz állomás rendszerbeli azonosítójastationAz állomás nevewaterAz állomáshoz tartozó víztest nevelatAz állomás földrajzi szélességi koordinátája (WSG84)lonAz állomás földrajzi hosszúsági koordinátája (WSG84)unitA mért érték mértékegységevariableA változó (paraméter) nevemeasurementsA mérések adatai.
+A measurements tömb ugyanazt a struktúrát tartalmazza, mint amikor nincs megadva az extended attribútum.
+Példák
+Az összes állomásra visszaadja a legutolsó mérést ahol volt a 2-esazonosítójú változóra adat:
+https://hydroinfo.hu/WSCSS/ovszws/api.php?token=egyedi_azonosito&view=getmeas&varid=2
+Az 1-es azonosítójú állomás 2-es változó azonosítójú legutolsó mérést adja vissza:
+https://hydroinfo.hu/WSCSS/ovszws/api.php?token=egyedi_azonosito&view=getmeas&varid=2&statid=1
+Az összes állomásra visszaadja 2022-04-03-tól az összes mérést, ahol volt a 2-esazonosítójú változóra adat:
+https://hydroinfo.hu/WSCSS/ovszws/api.php?token=egyedi_azonosito&view=getmeas&varid=2&fromdate=2022-04-03
+Az összes olyan állomásra visszaadja 2022-04-03-tól az összes mérést kibõvítve az állomás és a változó alapadataival, ahol volt a 2-es azonosítójú változóra adat és az állomások az 1-es azonosítójú víztesthez tartoznak:
+https://hydroinfo.hu/WSCSS/ovszws/api.php?token=egyedi_azonosito&view=getmeas&waterid=1&varid=2&fromdate=2022-04-03&extended=1
+3.6 getnearestmeas
+A kérés segítségével egy megadott földrajzi koordinátához képest legközelebbi, a rendszerben tárolt állomás mért adatait lehet lekérdezni a rendszertõl. Teljesen hasonlóan mûködik, mint a getmeas lekérdezés, de itt a statid-nak nincs szerepe.
+A kérés attribútumai (a kötelezõen megadandóak pirossal jelezve):
+* varid – a paraméter azonosító, kötelezõ, a getvariables kéréssel visszakapott paraméter azonosító kerülhet ide
+* token – A felhasználói egyedi azonosító. Kötelezõ megadni.
+* lat – az adott pozíció földrajzi szélességi koordinátája tizedfok formátumban. Kötelezõ megadni
+* lon – az adott pozíció földrajzi hosszúsági koordinátája tizedfok formátumban. Kötelezõ megadni.
+* waterid – a víztest azonosító. Nem kötelezõ megadni, a getwaters kéréssel visszakapott víztest azonosító kerülhet ide. Ha meg van adva, akkor csak azon állomások között keresi a legközelebbit, amelyek az adott víztesthez kapcsolódnak. 
+* fromdate – az adatok visszakérésének kezdõ dátuma YYYY-mm-dd formátumban. Nem kötelezõ megadni. Ha nincs megadva, akkor az utolsó mérést adja vissza az elmúlt 10 napból. Ha 10 napnál régebbi az utolsó mérés, akkor nem ad vissza adatot.
+* todate – az adatok visszakérésnek befejezõ dátuma YYYY-mm-dd formátumban. Nem kötelezõ megadni. Csak akkor veszi figyelembe a rendszer, ha meg van adva a fromdate attribútum is. A fromdate és a todate által megadott intervallum legfeljebb 100 nap lehet, ha több, mint 100 nap, akkor csak a fromdate-tõl számított elsõ 100 nap adatait adja vissza.
+* extended - Ha ez a kapcsoló meg van adva, akkor a válasz tartalmazza az állomás és a változó alapadatait is.
+A válasz egy JSON string lesz, amely a következõ struktúrát tartalmazza abban az esetben, ha nincs megadva az extended attribútum:
+statidAz állomás rendszerbeli azonosítójameasurementsA mérések adatai.
+A measurements tömb a következõ struktúrát tartalmazza 0…n számban:
+dateA mérés dátuma YYYY-mm-dd HH:ii:ss formában és UTC-benvalueA mért érték
+Ha az extended attribútum meg van adva akkor a válaszként kapott JSON string a getmeas függvény esetében leírt módon változik.
+Példák
+A 47.18; 19.61 –es földrajzi ponthoz a rendszer által kezelt állomások közül a legközelebbinek a 2-es azonosítójú változóra vonatkozó utolsó adatát adja vissza kibõvítve az állomás és a változó alapadataival:
+https://hydroinfo.hu/WSCSS/ovszws/api.php?token=egyedi_azonosito&view=getnearestmeas&varid=2&lat=47.18&lon=19.61&extended=1
+A 47.18; 19.61 –es földrajzi ponthoz a rendszer által kezelt és a 2-es azonosítójú víztesthez tartozó állomások közül a legközelebbinek a 2-es azonosítójú változóra vonatkozó utolsó adatát adja vissza: https://hydroinfo.hu/WSCSS/ovszws/api.php?token=egyedi_azonosito&view=getnearestmeas&varid=2&waterid=2&lat=47.18&lon=19.61
+A 47.18; 19.61 –es földrajzi ponthoz a rendszer által kezelt állomások közül a legközelebbinek a 2-es azonosítójú változóra vonatkozó összes adatát visszaadja 2022-04-03-tól:
+https://hydroinfo.hu/WSCSS/ovszws/api.php?token=egyedi_azonosito&view=getnearestmeas&varid=2&lat=47.18&lon=19.61&fromdate=2022-04-03
+3.7 getvarstat
+A függvény segítségével le lehet kérdezni, hogy a megadott paraméter adatai mely állomásokon érhetõek el
+A kérés attribútumai (a kötelezõen megadandóak pirossal jelezve):
+* token – A felhasználói egyedi azonosító
+* varid - a paraméter azonosító, kötelezõ, a getvariables kéréssel visszakapott paraméter azonosító kerülhet ide
+A válasz egy JSON string lesz, amelyben minden állomás a következõ struktúra szerint épül fel:
+statidAz állomás rendszerbeli azonosítójaforecastedKészül-e az adott állomásra elõrejelzés. Ha az értéke 1, akkor az adott állomáson az adott paraméterre készül elõrejelzés
+Példa 
+https://hydroinfo.hu/WSCSS/ovszws/api.php?token=egyedi_azonosito&view=getvarstat&varid=4
+3.7 getstatvar
+A függvény segítségével le lehet kérdezni, hogy a megadott állomáson milyen paraméter adatai érhetõek el
+A kérés attribútumai (a kötelezõen megadandóak pirossal jelezve):
+* token – A felhasználói egyedi azonosító
+* statid - az állomásazonosító, kötelezõ, a getstations kéréssel visszakapott állomásazonosító kerülhet ide. 
+
+A válasz egy JSON string lesz, amelyben minden paraméter a következõ struktúra szerint épül fel:
+varidA paraméter rendszerbeli azonosítójaforecastedKészül-e az adott állomásra elõrejelzés. Ha az értéke 1, akkor az adott állomáson az adott paraméterre készül elõrejelzés
+Példa 
+https://hydroinfo.hu/WSCSS/ovszws/api.php?token=egyedi_azonosito&view=getstatvar&statid=6
+3.8 getfc
+A kérés segítségével lehet elõrejelzési adatokat lekérdezni a rendszertõl
+A kérés attribútumai (a kötelezõen megadandóak pirossal jelezve):
+* varid – a paraméter azonosító, kötelezõ, a getvariables kéréssel visszakapott paraméter azonosító kerülhet ide
+* token – A felhasználói egyedi azonosító
+* statid – az állomás azonosító, a getstations kéréssel visszakapott állomásazonosító kerülhet ide. 
+* extended - Ha ez a kapcsoló meg van adva, akkor a válasz tartalmazza az állomás(ok) és a változó alapadatait is.
+A válasz egy JSON string lesz, amely a következõ struktúrát tartalmazza 0..n számban, abban az esetben, ha nincs megadva az extended attribútum:
+statidAz állomás rendszerbeli azonosítójaforecastsAz elõrejelzési adatok.
+A forecasts tömb a következõ struktúrát tartalmazza 0…n számban:
+dateAz elõrejelzés dátuma YYYY-mm-dd HH:ii:ss formában és UTC-benvalueAz elõrejelzett értékconfA konfidencia érték. Ez azt jelenti, hogy az elõrejelzett érték az itt megadott hibahatárral számol, azaz ha az elõrejelzett érték 120 cm, a hibahatár pedig 4 cm, akkor az elõrejelzett érték 70%-os valószínûséggel 120-4 cm, illetve 120+4 cm között lesz.
+Ha az extended attribútum meg van adva, akkor a válaszként kapott JSON string a következõképpen változik:
+statidAz állomás rendszerbeli azonosítójastationAz állomás nevewaterAz állomáshoz tartozó víztest nevelatAz állomás földrajzi szélességi koordinátája (WSG84)lonAz állomás földrajzi hosszúsági koordinátája (WSG84)unitA mért érték mértékegységevariableA változó (paraméter) nevemeasurementsA mérések adatai.
+A forecasts tömb ugyanazt a struktúrát tartalmazza, mint amikor nincs megadva az extended attribútum.
+Példa
+https://hydroinfo.hu/WSCSS/ovszws/api.php?token=egyedi_azonosito&view=getfc&statid=6&varid=4
+
+
+
+Hibák
+HibakódHiba leírása1A megadott kérés (view) nem érvényes 2A felhasználói egyedi azonosító (token) hibás, azaz nem tartozik hozzá felhasználó3A megadott földrajzi szélességi koordináta (lat) érvénytelen vagy nincs megadva. A szélességi koordinátát tized fokban kell megadni, ponttal elválasztva4A megadott földrajzi hosszúsági koordináta (lon) érvénytelen vagy nincs megadva. A hosszúsági koordinátát tized fokban kell megadni, ponttal elválasztva5Nem érvényes a változó azonosító (varid) értéke, vagy 06Nem érvényes az állomás azonosító (statid) értéke, vagy 07Nem érvényes a megadott kezdõ dátum (fromdate). A dátumot YYYY-mm-dd alakban kell megadni.8Nem érvényes a megadott befejezõ dátum (todate). A dátumot YYYY-mm-dd alakban kell megadni. Ha nincs megadva a fromdate, akkor a rendszer nem veszi figyelembe a todate -t9Nincs megadva a változó azonosító (varid).10Nem érvényes a megadott extended paraméter.11A megadott statid-hez nem tartozik a rendszerben állomás12A megadott varid-hez nem tartozik a rendszerben változó.13Nem érvényes a víztest azonosító (waterid) értéke, vagy 014A megadott waterid-hez nem tartozik a rendszerben víztest.15Adatbázis hiba. Elõfordulhat, ha az adatbázis éppen nem elérhetõ, de elõfordulhat egyéb adatbázis mûvelet miatt is.16A megadott állomásra semmilyen paraméterre nem készül elõrejelzés.17A megadott paraméterre nem készül elõrejelzés egyik állomásra se.18A megadott állomáson a megadott paraméterre nem készül elõrejelzés.
+
+
+Példa PHP script CURL segítségével
+
+<?php
+
+$url = 'https://hydroinfo.hu/WSCSS/ovszws/api.php';
+
+error_reporting(E_ALL);   
+ini_set("display_errors", 1);
+
+$curl = curl_init();
+
+$fields = array(
+    //mit kérünk vissza
+    'view' => 'getmeas',
+    //állomás azonosító (budapest)
+    'statid'=> 6,
+    //paraméter azonosító (vízhõfok)
+    'varid'=>3,
+    //részletes választ kérünk
+    'extended'=>1,
+    //mikortól
+   // 'fromdate'=>'2023-04-03',
+   // meddig
+   // 'todate'=>'2023-04-04',
+    //ez az önök egyedi azonosítója!
+    'token' => 'egyedi token azonosító',
+);
+
+$fields_string = http_build_query($fields);
+
+//mi az url ahonnan kérdezünk
+curl_setopt($curl, CURLOPT_URL, $url);
+//küldünk adatokat az url-hez
+curl_setopt($curl, CURLOPT_POST, true);
+//mik a küldendõ adatok
+curl_setopt($curl, CURLOPT_POSTFIELDS, $fields_string);
+//várunk választ
+curl_setopt($curl, CURLOPT_RETURNTRANSFER, true );
+//ne nézze a szerver certificatet-jét
+curl_setopt($curl,CURLOPT_SSL_VERIFYPEER,false);
+
+$raw = curl_exec($curl);
+curl_close($curl);
+
+if ($raw === false)
+{
+    echo "Hiba történt az adatok lekérése közben!\n";
+    exit;
+}
+else
+{        
+    $data = json_decode($raw,true);
+        
+    if (array_key_exists('entries',$data))
+    {
+        $unit = $data['entries'][0]['unit'];
+        foreach($data['entries'][0]['measurements'] as $measurement)
+        {
+            $bp_vizhofok = $measurement['value'];
+            $date = $measurement['date'];
+
+            echo "Bp Duna vízhõfok ".$bp_vizhofok." ".$unit." Dátum ".$date."\n";
+        }
+    }
+    else
+    {
+        echo "Nem megfelelõ az adat formátuma!";
+    }
+}
+?>
+
