@@ -14,6 +14,7 @@ import {
 
 import { firestore } from '../firebase/firestore'
 import type { WeatherData } from '../api/weather'
+import type { MeasurementEntry, ForecastEntry, Measurement } from '../api/water'
 
 export type WeatherSnapshot = WeatherData & {
   capturedAt: number
@@ -24,11 +25,33 @@ export type Coordinates = {
   lon: number
 }
 
+export type WaterDataSnapshot = MeasurementEntry & {
+  capturedAt: number
+}
+
+export type WaterTemperatureSnapshot = MeasurementEntry & {
+  capturedAt: number
+}
+
+export type ForecastSnapshot = {
+  forecasts: ForecastEntry[]
+  capturedAt: number
+}
+
+export type PastWaterLevelSnapshot = {
+  data: Array<{ entry: MeasurementEntry; measurement: Measurement }>
+  capturedAt: number
+}
+
 export type LocationRecordData = {
   locationName: string
   locationQuery: string
   coordinates?: Coordinates
   weatherSnapshot?: WeatherSnapshot
+  waterDataSnapshot?: WaterDataSnapshot
+  waterTemperatureSnapshot?: WaterTemperatureSnapshot
+  forecastSnapshot?: ForecastSnapshot
+  pastWaterLevelSnapshot?: PastWaterLevelSnapshot
 }
 
 export type LocationRecord = LocationRecordData & {
@@ -54,6 +77,10 @@ const mapDoc = (uid: string, snapshot: QueryDocumentSnapshot<DocumentData>): Loc
     createdAt: data.createdAt ?? Date.now(),
     updatedAt: data.updatedAt ?? Date.now(),
     weatherSnapshot: data.weatherSnapshot,
+    waterDataSnapshot: data.waterDataSnapshot,
+    waterTemperatureSnapshot: data.waterTemperatureSnapshot,
+    forecastSnapshot: data.forecastSnapshot,
+    pastWaterLevelSnapshot: data.pastWaterLevelSnapshot,
   }
 }
 

@@ -35,8 +35,13 @@ body {
 }
 
 h1 {
-  font-size: 3.2em;
+  font-size: 4em;
   line-height: 1.1;
+  font-family: 'Orbitron', 'Arial Black', 'Arial Bold', Arial, sans-serif;
+  font-weight: 900;
+  letter-spacing: 0.15em;
+  color: rgba(255, 255, 247, 0.95);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 0 0 20px rgba(85, 161, 191, 0.4);
 }
 
 button {
@@ -246,11 +251,229 @@ button:focus-visible {
   --drift: -0.9;
 }
 
+.pike-container {
+  position: absolute;
+  width: 1200px;
+  height: 402px;
+  z-index: 1;
+}
+
+.pike {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Balról jobbra úszás */
+.pike-container.left-to-right {
+  animation: pike-swim-left-to-right 48s linear forwards;
+}
+
+/* Jobbról balra úszás */
+.pike-container.right-to-left {
+  animation: pike-swim-right-to-left 48s linear forwards;
+}
+
+@keyframes pike-swim-left-to-right {
+  0% {
+    left: -1200px;
+    top: var(--pike-top, 20%);
+    transform: scaleX(-1);
+  }
+  100% {
+    left: calc(100% + 1200px);
+    top: var(--pike-top, 20%);
+    transform: scaleX(-1);
+  }
+}
+
+@keyframes pike-swim-right-to-left {
+  0% {
+    left: calc(100% + 1200px);
+    top: var(--pike-top, 20%);
+    transform: scaleX(1);
+  }
+  100% {
+    left: -1200px;
+    top: var(--pike-top, 20%);
+    transform: scaleX(1);
+  }
+}
+
+
+.bass-container {
+  position: absolute;
+  width: 300px;
+  height: 102px;
+  z-index: 1;
+}
+
+.bass {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Balról jobbra úszás */
+.bass-container.left-to-right {
+  animation: bass-swim-left-to-right 36s linear forwards;
+}
+
+/* Jobbról balra úszás */
+.bass-container.right-to-left {
+  animation: bass-swim-right-to-left 36s linear forwards;
+}
+
+@keyframes bass-swim-left-to-right {
+  0% {
+    left: -300px;
+    top: var(--bass-top, 20%);
+    transform: scaleX(-1);
+  }
+  100% {
+    left: calc(100% + 300px);
+    top: var(--bass-top, 20%);
+    transform: scaleX(-1);
+  }
+}
+
+@keyframes bass-swim-right-to-left {
+  0% {
+    left: calc(100% + 300px);
+    top: var(--bass-top, 20%);
+    transform: scaleX(1);
+  }
+  100% {
+    left: -300px;
+    top: var(--bass-top, 20%);
+    transform: scaleX(1);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .bubble {
     animation: none;
     opacity: 0;
   }
+  .pike-container {
+    animation: none;
+  }
+  .bass-container {
+    animation: none;
+  }
+}
+
+/* Stilizált nyíl a lapozáshoz */
+.folded-corner {
+  position: relative;
+  overflow: hidden;
+}
+
+.folded-corner::after {
+  content: '→';
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  font-weight: bold;
+  color: rgba(0, 0, 0, 0.4);
+  background-color: rgba(255, 255, 255, 0.8);
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15), 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.6s ease-in-out, opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+  z-index: 2;
+  pointer-events: none;
+  cursor: pointer;
+}
+
+.folded-corner::before {
+  display: none;
+}
+
+/* Nyíl eltűnik kattintásra/flipped állapotban */
+.folded-corner.flipped::after {
+  opacity: 0;
+  visibility: hidden;
+}
+
+/* Back oldalon a nyíl megjelenik az animáció vége után és fordítva */
+.folded-corner.flipped.show-back-corner::after {
+  opacity: 1;
+  visibility: visible;
+  transition-delay: 0s;
+  transform: rotate(180deg);
+}
+
+/* Kétoldalas lapozás */
+.data-card {
+  position: relative;
+  overflow: hidden;
+  font-family: system-ui, sans-serif;
+  font-size: 0.9rem;
+  color: #0f172a;
+  line-height: 1.5;
+  border-radius: 0.75rem;
+}
+
+.data-card h2,
+.data-card h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #0f172a;
+  margin: 0 0 0.5rem;
+}
+
+.data-card p {
+  font-size: 0.9rem;
+  color: #0f172a;
+  margin: 0 0 0.5rem;
+  line-height: 1.5;
+}
+
+.data-card {
+  perspective: 1000px;
+}
+
+.card-front,
+.card-back {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.6s ease-in-out;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  line-height: inherit;
+}
+
+.card-front {
+  transform: rotateY(0deg);
+  z-index: 2;
+}
+
+.card-back {
+  transform: rotateY(180deg);
+  z-index: 1;
+}
+
+.data-card.flipped .card-front {
+  transform: rotateY(-180deg);
+  z-index: 1;
+}
+
+.data-card.flipped .card-back {
+  transform: rotateY(0deg);
+  z-index: 2;
 }
 
 @media (prefers-color-scheme: light) {
