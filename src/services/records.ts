@@ -47,6 +47,8 @@ export type LocationRecordData = {
   locationName: string
   locationQuery: string
   coordinates?: Coordinates
+  date?: string // yyyy.mm.dd formátum
+  time?: string // HH:MM formátum
   weatherSnapshot?: WeatherSnapshot
   waterDataSnapshot?: WaterDataSnapshot
   waterTemperatureSnapshot?: WaterTemperatureSnapshot
@@ -74,6 +76,8 @@ const mapDoc = (uid: string, snapshot: QueryDocumentSnapshot<DocumentData>): Loc
     locationName: data.locationName ?? '',
     locationQuery: data.locationQuery ?? '',
     coordinates: data.coordinates,
+    date: data.date,
+    time: data.time,
     createdAt: data.createdAt ?? Date.now(),
     updatedAt: data.updatedAt ?? Date.now(),
     weatherSnapshot: data.weatherSnapshot,
