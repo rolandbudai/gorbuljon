@@ -2213,7 +2213,7 @@ function App() {
                               
                               // Következő 3 nap (előrejelzés)
                               const dailyForecasts = firstForecastForChart.forecasts.reduce((acc: typeof firstForecastForChart.forecasts, forecast) => {
-                                const date = new Date(forecast.date)
+                          const date = new Date(forecast.date)
                                 const dateKey = date.toISOString().split('T')[0]
                           const existing = acc.find((f) => {
                             const fDate = new Date(f.date)
