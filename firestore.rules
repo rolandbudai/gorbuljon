@@ -1,0 +1,12 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Szabályok a felhasználói rekordokhoz
+    match /users/{userId}/records/{recordId} {
+      // Csak a bejelentkezett felhasználók érhetik el a saját rekordjaikat
+      // Olvasás, írás (create, update, delete) mind engedélyezett, ha a felhasználó be van jelentkezve és a saját rekordját éri el
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}
+

@@ -20,19 +20,17 @@ export default defineConfig({
         scope: '/',
         start_url: '/',
         icons: [
-          // TODO: Hozzá kell adni a PNG ikonokat (192x192 és 512x512)
-          // Az ikonokat a logo-cropped.svg alapján kell generálni
-          // Online converter: https://cloudconvert.com/svg-to-png vagy hasonló
-          // {
-          //   src: 'icon-192x192.png',
-          //   sizes: '192x192',
-          //   type: 'image/png',
-          // },
-          // {
-          //   src: 'icon-512x512.png',
-          //   sizes: '512x512',
-          //   type: 'image/png',
-          // },
+
+           {
+             src: 'icon-192x192.png',
+             sizes: '192x192',
+             type: 'image/png',
+           },
+           {
+             src: 'icon-512x512.png',
+             sizes: '512x512',
+             type: 'image/png',
+           },
         ],
       },
       // Service worker nincs engedélyezve Fázis 1-ben
@@ -46,6 +44,16 @@ export default defineConfig({
     }),
   ],
   server: {
+    proxy: {
+      '/api/ovszws': {
+        target: 'https://hydroinfo.hu',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/ovszws/, '/WSCSS/ovszws'),
+        secure: true,
+      },
+    },
+  },
+  preview: {
     proxy: {
       '/api/ovszws': {
         target: 'https://hydroinfo.hu',

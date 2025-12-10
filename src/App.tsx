@@ -1,4 +1,4 @@
-import React, { type ChangeEvent, useEffect, useMemo, useState } from 'react'
+import React, { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react'
 import * as XLSX from 'xlsx'
 
 import { useAuth } from './context/AuthContext.tsx'
@@ -24,8 +24,6 @@ import {
   type Measurement,
   type MeasurementEntry,
   type Station,
-  type StationVariable,
-  type Variable,
 } from './api/water.ts'
 import {
   addRecord,
@@ -38,7 +36,7 @@ import {
 
 function App() {
   const { user, loading: authLoading, signInWithGoogle, signOutUser, authActionRunning } = useAuth()
-  const [message, setMessage] = useState<string>('Kapcsolódás ellenőrzése folyamatban…')
+  const [_message, setMessage] = useState<string>('Kapcsolódás ellenőrzése folyamatban…')
   const [records, setRecords] = useState<LocationRecord[]>([])
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null)
   const selectedRecord = useMemo(
@@ -49,7 +47,10 @@ function App() {
   const [locationQuery, setLocationQuery] = useState<string>('')
   const [coordinates, setCoordinates] = useState<Coordinates | undefined>(undefined)
   const [isSaving, setIsSaving] = useState(false)
-  const [saveMessage, setSaveMessage] = useState<string | null>(null)
+  const [_saveMessage, setSaveMessage] = useState<string | null>(null)
+  const [showFishPopup, setShowFishPopup] = useState(false)
+  const [selectedFish, setSelectedFish] = useState<string[]>([])
+  const fishOptions = ['balin', 'csuka', 'harcsa', 'süllő', 'sügér', 'egyéb']
   const [authError, setAuthError] = useState<string | null>(null)
   const [geolocationLoading, setGeolocationLoading] = useState(false)
   const [geolocationError, setGeolocationError] = useState<string | null>(null)
@@ -59,7 +60,7 @@ function App() {
   const [weatherError, setWeatherError] = useState<string | null>(null)
   const [waterData, setWaterData] = useState<MeasurementEntry | null>(null)
   const [waterLoading, setWaterLoading] = useState(false)
-  const [waterError, setWaterError] = useState<string | null>(null)
+  const [_waterError, setWaterError] = useState<string | null>(null)
   const [waterLevelVarId, setWaterLevelVarId] = useState<number | null>(null)
   const [waterTemperatureData, setWaterTemperatureData] = useState<MeasurementEntry | null>(null)
   const [waterTemperatureLoading, setWaterTemperatureLoading] = useState(false)
@@ -70,12 +71,15 @@ function App() {
   const [forecastError, setForecastError] = useState<string | null>(null)
   const [forecastStationId, setForecastStationId] = useState<number | null>(null) // Melyik állomásról származik az előrejelzés
   const [pastWaterLevelData, setPastWaterLevelData] = useState<Array<{ entry: MeasurementEntry; measurement: Measurement }> | null>(null)
-  const [pastWaterLevelLoading, setPastWaterLevelLoading] = useState(false)
-  const [pastWaterLevelError, setPastWaterLevelError] = useState<string | null>(null)
+  const [_pastWaterLevelLoading, setPastWaterLevelLoading] = useState(false)
+  const [_pastWaterLevelError, setPastWaterLevelError] = useState<string | null>(null)
   const [hoveredPointIndex, setHoveredPointIndex] = useState<number | null>(null)
-  const [stationDetails, setStationDetails] = useState<Station | null>(null)
+  const [_stationDetails, setStationDetails] = useState<Station | null>(null)
   const [isFlipped, setIsFlipped] = useState(false)
   const [showBackCorner, setShowBackCorner] = useState(false)
+  const cardFrontRef = useRef<HTMLDivElement>(null)
+  const cardBackRef = useRef<HTMLDivElement>(null)
+  const dataCardRef = useRef<HTMLDivElement>(null)
   const [savedCardFlipped, setSavedCardFlipped] = useState(false)
   const [showSavedBackCorner, setShowSavedBackCorner] = useState(false)
   const [locationSuggestions, setLocationSuggestions] = useState<LocationSearchResult[]>([])
@@ -160,8 +164,9 @@ function App() {
           setMessage('')
         }
       },
-      () => {
-        setMessage('Hoppá, valami hiba történt a rekordok betöltésekor.')
+      (error) => {
+        console.error('Hiba a rekordok betöltésekor:', error)
+        setMessage(`Hoppá, valami hiba történt a rekordok betöltésekor: ${error.message || 'Ismeretlen hiba'}`)
       },
     )
 
@@ -194,6 +199,57 @@ function App() {
 
     // Nem választunk ki automatikusan rekordot - csak manuális kattintásra
   }, [records, selectedRecordId, user])
+
+  // Dinamikusan beállítjuk a data-card magasságát viewport height-ra és az ikonok méretét
+  useEffect(() => {
+    if (dataCardRef.current) {
+      const viewportHeight = window.innerHeight
+      const cardHeight = viewportHeight * 0.9 // 90vh
+      dataCardRef.current.style.height = `${cardHeight}px`
+      dataCardRef.current.style.maxHeight = `${cardHeight}px`
+      
+      // Az ikonok méretét a viewport height alapján számoljuk (vh egységben)
+      // Min: 0.8rem, Max: 2rem, alapértelmezett: 1.25rem
+      const iconSizeMultiplier = Math.max(0.64, Math.min(1.6, viewportHeight / 800)) // 0.8-2rem között skálázódik
+      const root = document.documentElement
+      root.style.setProperty('--icon-size-base', `${iconSizeMultiplier}rem`)
+      
+      // Data field méretek reszponzív beállítása
+      const fieldLabelSize = Math.max(0.6, Math.min(0.75, viewportHeight / 1200))
+      const fieldValueSize = Math.max(0.8, Math.min(1.25, viewportHeight / 800))
+      const fieldIconSize = Math.max(0.7, Math.min(1, viewportHeight / 1000))
+      root.style.setProperty('--data-field-label-size', `${fieldLabelSize}rem`)
+      root.style.setProperty('--data-field-value-size', `${fieldValueSize}rem`)
+      root.style.setProperty('--data-field-icon-size', `${fieldIconSize}rem`)
+    }
+  }, [weatherData, waterData, isFlipped, selectedRecord])
+  
+  // Window resize esemény kezelése az ikonok méretének frissítéséhez
+  useEffect(() => {
+    const handleResize = () => {
+      if (dataCardRef.current) {
+        const viewportHeight = window.innerHeight
+        const cardHeight = viewportHeight * 0.9 // 90vh
+        dataCardRef.current.style.height = `${cardHeight}px`
+        dataCardRef.current.style.maxHeight = `${cardHeight}px`
+        
+        const iconSizeMultiplier = Math.max(0.64, Math.min(1.6, viewportHeight / 800))
+        const root = document.documentElement
+        root.style.setProperty('--icon-size-base', `${iconSizeMultiplier}rem`)
+        
+        // Data field méretek reszponzív beállítása
+        const fieldLabelSize = Math.max(0.6, Math.min(0.75, viewportHeight / 1200))
+        const fieldValueSize = Math.max(0.8, Math.min(1.25, viewportHeight / 800))
+        const fieldIconSize = Math.max(0.7, Math.min(1, viewportHeight / 1000))
+        root.style.setProperty('--data-field-label-size', `${fieldLabelSize}rem`)
+        root.style.setProperty('--data-field-value-size', `${fieldValueSize}rem`)
+        root.style.setProperty('--data-field-icon-size', `${fieldIconSize}rem`)
+      }
+    }
+    
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
 
   useEffect(() => {
@@ -252,7 +308,7 @@ function App() {
     locationName?: string
     locationQuery?: string
     coordinates?: Coordinates
-  }) => {
+  }, caughtFish?: string[]) => {
     if (!user) {
       throw new Error('Bejelentkezés szükséges a mentéshez.')
     }
@@ -317,6 +373,7 @@ function App() {
       waterTemperatureSnapshot,
       forecastSnapshot,
       pastWaterLevelSnapshot,
+      caughtFish: caughtFish || [], // Mindig mentésre kerül, még üres tömb esetén is
     }
 
     const ref = await addRecord(user.uid, payload)
@@ -344,16 +401,40 @@ function App() {
       return
     }
 
+    // Popup megjelenítése a halak kiválasztásához
+    setShowFishPopup(true)
+  }
+
+  const handleFishPopupConfirm = async () => {
     setIsSaving(true)
     setSaveMessage('Mentés folyamatban…')
 
     try {
-      await saveLocation()
+      await saveLocation(undefined, selectedFish)
+      setSelectedFish([]) // Reset a következő mentéshez
+      setShowFishPopup(false) // Csak sikeres mentés után zárjuk be a popup-ot
     } catch (error) {
-      setSaveMessage('Mentés sikertelen. Nézd meg a konzolt a részletekért!')
+      console.error('Hiba a rekord mentésekor:', error)
+      setSaveMessage(`Mentés sikertelen: ${error instanceof Error ? error.message : 'Ismeretlen hiba'}`)
+      // Ne zárjuk be a popup-ot hiba esetén, hogy a felhasználó újra próbálkozhat
     } finally {
       setIsSaving(false)
     }
+  }
+
+  const handleFishPopupCancel = () => {
+    setShowFishPopup(false)
+    setSelectedFish([])
+  }
+
+  const toggleFish = (fish: string) => {
+    setSelectedFish(prev => {
+      if (prev.includes(fish)) {
+        return prev.filter(f => f !== fish)
+      } else {
+        return [...prev, fish]
+      }
+    })
   }
 
   const handleSignIn = async () => {
@@ -1121,7 +1202,7 @@ function App() {
         locationName: displayName,
         locationQuery: queryValue,
         coordinates: coords,
-      })
+      }, undefined) // Automatikus mentésnél nincs hal kiválasztás
     } catch (error) {
       setSaveMessage('Nem sikerült menteni a kiválasztott helyszínt.')
     }
@@ -1245,6 +1326,8 @@ function App() {
     }, 500)
   }
 
+  // TODO: Excel export funkció - jelenleg nincs használatban
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleExportToExcel = async () => {
     if (!user || !waterTemperatureVarId) {
       alert('Be kell jelentkezned és meg kell várnod, amíg a vízhőmérséklet változó betöltődik.')
@@ -1344,6 +1427,7 @@ function App() {
       alert('Hiba történt az Excel fájl létrehozása során. Nézd meg a konzolt!')
     }
   }
+  void handleExportToExcel // Explicitly mark as intentionally unused
 
   return (
     <>
@@ -1376,10 +1460,37 @@ function App() {
           </div>
         )}
       </div>
-      <main style={{ padding: '2rem', fontFamily: 'system-ui, sans-serif', position: 'relative', zIndex: 10, width: '100%', maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <h1 style={{ position: 'relative' }}>
-          <img src={logoImg} alt="Logo" style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: -1, opacity: 0.3, maxWidth: '200px', height: 'auto', filter: 'brightness(0) invert(1)' }} />
-          <span style={{ color: '#FFFFF7' }}>HALNAPLÓ</span>
+      <main className="main-container" style={{ 
+        padding: '2rem', 
+        fontFamily: 'system-ui, sans-serif', 
+        position: 'relative', 
+        zIndex: 10, 
+        width: '100%', 
+        maxWidth: '800px', 
+        margin: '0 auto', 
+        display: 'flex', 
+        flexDirection: 'column', 
+        alignItems: 'center',
+        boxSizing: 'border-box',
+      }}>
+        <h1 style={{ position: 'relative', width: '100%', boxSizing: 'border-box', textAlign: 'center' }}>
+          <img 
+            src={logoImg} 
+            alt="Logo" 
+            className="logo-background"
+            style={{ 
+              position: 'absolute', 
+              top: '50%', 
+              left: '50%', 
+              transform: 'translate(-50%, -50%)', 
+              zIndex: -1, 
+              opacity: 0.3, 
+              maxWidth: '200px', 
+              height: 'auto', 
+              filter: 'brightness(0) invert(1)' 
+            }} 
+          />
+          <span style={{ color: '#FFFFF7', display: 'block', wordWrap: 'break-word', overflowWrap: 'break-word', textAlign: 'center' }}>HALNAPLÓ</span>
         </h1>
         <h4>Best horgász app in the world...</h4>
       <section
@@ -1618,6 +1729,7 @@ function App() {
           <p style={{ color: '#dc2626' }}>{weatherError}</p>
         ) : weatherData ? (
           <div
+            ref={dataCardRef}
             className={`data-card folded-corner ${isFlipped ? 'flipped' : ''} ${showBackCorner ? 'show-back-corner' : ''}`}
             onClick={(e) => {
               const rect = e.currentTarget.getBoundingClientRect()
@@ -1641,357 +1753,612 @@ function App() {
             }}
             style={{
               position: 'relative',
-              width: '90%',
+              width: '100%',
               maxWidth: '100%',
-              height: 'auto',
-              minHeight: '440px',
+              height: '90vh',
+              maxHeight: '90vh',
               cursor: 'pointer',
               transformStyle: 'preserve-3d',
               transition: 'transform 0.6s ease-in-out',
               borderRadius: '0.75rem',
               overflow: 'hidden',
               boxSizing: 'border-box',
+              padding: 0,
+              margin: 0,
             }}
           >
             {/* Front side - Időjárási adatok */}
             <div
+              ref={cardFrontRef}
               className="card-front"
               style={{
                 display: 'flex',
                 flexDirection: 'column',
-              gap: '1rem',
-              padding: '1.5rem',
+                gap: '1rem',
+                padding: '1.25rem',
+                borderRadius: '1rem',
+                border: 'none',
+                background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.6) 0%, rgba(248, 250, 252, 0.6) 100%)',
+                color: '#0f172a',
+                boxSizing: 'border-box',
+                overflowX: 'hidden',
+                overflowY: 'auto',
+                wordWrap: 'break-word',
+                overflowWrap: 'break-word',
+                height: '100%',
+              }}
+            >
+            {/* Card Header - Kiemelt fejléc dátum, helyszín és vízterülettel */}
+            <div className="data-card-header" style={{ 
+              background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
+              border: '2px solid #93c5fd',
               borderRadius: '0.75rem',
-                border: '1px solid #e0e0e0',
-                backgroundColor: '#FFFFF7',
-              color: '#0f172a',
-            }}
-          >
-            <div>
-              <p style={{ margin: '0 0 0.5rem', fontSize: '0.9rem', color: '#000000' }}>
+              padding: '1rem 1.25rem',
+              marginBottom: '1.25rem',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: '1rem',
+              flexWrap: 'wrap'
+            }}>
+              {/* Dátum - bal oldal */}
+              <div style={{ 
+                fontSize: '0.85rem', 
+                color: '#64748b',
+                fontWeight: 500,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.25rem'
+              }}>
                 {(() => {
                   const now = new Date()
                   const date = now.toISOString().split('T')[0].replace(/-/g, '.')
                   const time = now.toTimeString().split(' ')[0].slice(0, 5) // HH:MM formátum
                   return (
                     <>
-                      <span style={{ fontWeight: 'bold' }}>{date}</span>{' '}
-                      <span>{time}</span>
+                      <span style={{ fontWeight: 600, color: '#1e293b', fontSize: '0.9rem' }}>{date}</span>
+                      <span style={{ fontSize: '0.8rem' }}>{time}</span>
                     </>
                   )
                 })()}
-              </p>
-              <h3 style={{ margin: '0 0 0.5rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                {weatherData.locationName}
+              </div>
+              
+              {/* Helyszín - közép */}
+              <div style={{ 
+                flex: 1,
+                display: 'flex', 
+                flexDirection: 'column',
+                alignItems: 'center', 
+                justifyContent: 'center',
+                gap: '0.25rem',
+                minWidth: '150px'
+              }}>
+                <h3 style={{ 
+                  margin: 0, 
+                  fontSize: '1.25rem',
+                  fontWeight: 700,
+                  color: '#1e293b',
+                  letterSpacing: '-0.01em',
+                  textAlign: 'center'
+                }}>
+                  {weatherData.locationName}
+                </h3>
                 {coordinates && (
-                  <span
-        style={{
-                      position: 'relative',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      width: '14px',
-                      height: '14px',
-                      borderRadius: '50%',
-                      backgroundColor: '#94a3b8',
-                      color: '#ffffff',
-                      fontSize: '10px',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      marginLeft: '0.25rem',
-                    }}
-                    onMouseEnter={(e) => {
-                      const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
-                      if (tooltip) {
-                        tooltip.style.opacity = '1'
-                        tooltip.style.visibility = 'visible'
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
-                      if (tooltip) {
-                        tooltip.style.opacity = '0'
-                        tooltip.style.visibility = 'hidden'
-                      }
-                    }}
-                  >
-                    i
-                    <span
-                      data-tooltip
-            style={{
-                        position: 'absolute',
-                        top: '50%',
-                        left: '100%',
-                        transform: 'translateY(-50%)',
-                        marginLeft: '5px',
-                        padding: '6px 10px',
-                        backgroundColor: '#1e293b',
-                        color: '#ffffff',
-                        borderRadius: '4px',
-                        fontSize: '12px',
-                        whiteSpace: 'nowrap',
-                        zIndex: 1000,
-                        pointerEvents: 'none',
-                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
-                        opacity: 0,
-                        visibility: 'hidden',
-                        transition: 'opacity 0.2s, visibility 0.2s',
-                      }}
-                    >
-                      Koordináták: {coordinates.lat.toFixed(4)}, {coordinates.lon.toFixed(4)}
-                    </span>
-                  </span>
+                  <div style={{
+                    fontSize: '0.75rem',
+                    color: '#64748b',
+                    fontWeight: 500,
+                    textAlign: 'center'
+                  }}>
+                    {coordinates.lat.toFixed(4)}, {coordinates.lon.toFixed(4)}
+                  </div>
                 )}
-              </h3>
+              </div>
+              
+              {/* Vízterület - jobb oldal */}
               {waterData?.water && (
-                <p style={{ margin: '0 0 0.5rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                  <strong>{waterData.water}</strong>
-                  {waterData.station && (
-                    <span
-                      style={{
-                        position: 'relative',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: '14px',
-                        height: '14px',
-                        borderRadius: '50%',
-                        backgroundColor: '#94a3b8',
-                        color: '#ffffff',
-                        fontSize: '10px',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        marginLeft: '0.25rem',
-                      }}
-                      onMouseEnter={(e) => {
-                        const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
-                        if (tooltip) {
-                          tooltip.style.opacity = '1'
-                          tooltip.style.visibility = 'visible'
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
-                        if (tooltip) {
-                          tooltip.style.opacity = '0'
-                          tooltip.style.visibility = 'hidden'
-                        }
-                      }}
-                    >
-                      i
+                <div style={{ 
+                  fontSize: '0.9rem',
+                  fontWeight: 600,
+                  color: '#0369a1',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  textAlign: 'right'
+                }}>
+                  <span style={{ fontSize: '1.25rem' }}>🌊</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem' }}>
+                    <span style={{ fontSize: '1.25rem' }}>{waterData.water}</span>
+                    {waterData.station && (
                       <span
-                        data-tooltip
                         style={{
-                          position: 'absolute',
-                          top: '50%',
-                          left: '100%',
-                          transform: 'translateY(-50%)',
-                          marginLeft: '5px',
-                          padding: '6px 10px',
-                          backgroundColor: '#1e293b',
+                          position: 'relative',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '14px',
+                          height: '14px',
+                          borderRadius: '50%',
+                          backgroundColor: '#94a3b8',
                           color: '#ffffff',
-                          borderRadius: '4px',
-                          fontSize: '12px',
-                          whiteSpace: 'nowrap',
-                          zIndex: 1000,
-                          pointerEvents: 'none',
-                          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
-                          opacity: 0,
-                          visibility: 'hidden',
-                          transition: 'opacity 0.2s, visibility 0.2s',
+                          fontSize: '10px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                        }}
+                        onMouseEnter={(e) => {
+                          const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
+                          if (tooltip) {
+                            tooltip.style.opacity = '1'
+                            tooltip.style.visibility = 'visible'
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
+                          if (tooltip) {
+                            tooltip.style.opacity = '0'
+                            tooltip.style.visibility = 'hidden'
+                          }
                         }}
                       >
-                        Legközelebbi mérőállomás: {waterData.station}
+                        i
+                        <span
+                          data-tooltip
+                          style={{
+                            position: 'absolute',
+                            top: '50%',
+                            left: '100%',
+                            transform: 'translateY(-50%)',
+                            marginLeft: '5px',
+                            padding: '6px 10px',
+                            backgroundColor: '#1e293b',
+                            color: '#ffffff',
+                            borderRadius: '4px',
+                            fontSize: '12px',
+                            whiteSpace: 'nowrap',
+                            zIndex: 1000,
+                            pointerEvents: 'none',
+                            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+                            opacity: 0,
+                            visibility: 'hidden',
+                            transition: 'opacity 0.2s, visibility 0.2s',
+                          }}
+                        >
+                          Legközelebbi mérőállomás: {waterData.station}
+                        </span>
                       </span>
-                    </span>
-                  )}
-                </p>
-              )}
-              {waterLoading ? (
-                <p style={{ margin: '0 0 0.5rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                  Vízállás: adatok betöltése…
-                </p>
-              ) : waterData?.measurements && waterData.measurements.length > 0 ? (
-                <p style={{ margin: '0 0 0.5rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                    Vízállás: {waterData.measurements[waterData.measurements.length - 1].value.toFixed(1)}{' '}
-                    {waterData.unit || 'cm'}
-                  <span
-                    style={{
-                      position: 'relative',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      width: '14px',
-                      height: '14px',
-                      borderRadius: '50%',
-                      backgroundColor: '#94a3b8',
-                      color: '#ffffff',
-                      fontSize: '10px',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      marginLeft: '0.25rem',
-                    }}
-                    onMouseEnter={(e) => {
-                      const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
-                      if (tooltip) {
-                        tooltip.style.opacity = '1'
-                        tooltip.style.visibility = 'visible'
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
-                      if (tooltip) {
-                        tooltip.style.opacity = '0'
-                        tooltip.style.visibility = 'hidden'
-                      }
-                    }}
-                  >
-                    i
-                    <span
-                      data-tooltip
-                      style={{
-                        position: 'absolute',
-                        top: '50%',
-                        left: '100%',
-                        transform: 'translateY(-50%)',
-                        marginLeft: '5px',
-                        padding: '6px 10px',
-                        backgroundColor: '#1e293b',
-                        color: '#ffffff',
-                        borderRadius: '4px',
-                        fontSize: '12px',
-                        whiteSpace: 'nowrap',
-                        zIndex: 1000,
-                        pointerEvents: 'none',
-                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
-                        opacity: 0,
-                        visibility: 'hidden',
-                        transition: 'opacity 0.2s, visibility 0.2s',
-                      }}
-                    >
-                      Mérés dátuma: {new Date(waterData.measurements[waterData.measurements.length - 1].date).toLocaleString('hu-HU')}
-                    </span>
-                  </span>
-                </p>
-              ) : null}
-                {waterTemperatureLoading ? (
-                <p style={{ margin: '0 0 0.5rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                  Vízhőmérséklet: adatok betöltése…
-                    </p>
-                ) : waterTemperatureError ? (
-                <p style={{ margin: '0 0 0.5rem', color: '#ef4444' }}>
-                      ⚠️ {waterTemperatureError}
-                    </p>
-                ) : waterTemperatureData && waterTemperatureData.measurements && waterTemperatureData.measurements.length > 0 && waterTemperatureData.measurements[waterTemperatureData.measurements.length - 1].value != null ? (
-                <p style={{ margin: '0 0 0.5rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                      Vízhőmérséklet: {typeof waterTemperatureData.measurements[waterTemperatureData.measurements.length - 1].value === 'number' ? waterTemperatureData.measurements[waterTemperatureData.measurements.length - 1].value.toFixed(1) : waterTemperatureData.measurements[waterTemperatureData.measurements.length - 1].value}{' '}
-                      {waterTemperatureData.unit || '°C'}
-                  <span
-                    style={{
-                      position: 'relative',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      width: '14px',
-                      height: '14px',
-                      borderRadius: '50%',
-                      backgroundColor: '#94a3b8',
-                      color: '#ffffff',
-                      fontSize: '10px',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      marginLeft: '0.25rem',
-                    }}
-                    onMouseEnter={(e) => {
-                      const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
-                      if (tooltip) {
-                        tooltip.style.opacity = '1'
-                        tooltip.style.visibility = 'visible'
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
-                      if (tooltip) {
-                        tooltip.style.opacity = '0'
-                        tooltip.style.visibility = 'hidden'
-                      }
-                    }}
-                  >
-                    i
-                    <span
-                      data-tooltip
-                      style={{
-                        position: 'absolute',
-                        top: '50%',
-                        left: '100%',
-                        transform: 'translateY(-50%)',
-                        marginLeft: '5px',
-                        padding: '6px 10px',
-                        backgroundColor: '#1e293b',
-                        color: '#ffffff',
-                        borderRadius: '4px',
-                        fontSize: '12px',
-                        whiteSpace: 'nowrap',
-                        zIndex: 1000,
-                        pointerEvents: 'none',
-                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
-                        opacity: 0,
-                        visibility: 'hidden',
-                        transition: 'opacity 0.2s, visibility 0.2s',
-                      }}
-                    >
-                      Mérés dátuma: {new Date(waterTemperatureData.measurements[waterTemperatureData.measurements.length - 1].date).toLocaleString('hu-HU')}
-                    </span>
-                  </span>
-                </p>
-                ) : !waterTemperatureLoading && waterTemperatureVarId ? (
-                <p style={{ margin: '0 0 0.5rem' }}>
-                  adatok betöltése...
-                    </p>
-                ) : null}
-              <p style={{ margin: '0 0 0.5rem' }}>
-                Levegő hőmérséklet: {weatherData.airTemperatureC.toFixed(1)} °C
-              </p>
-              <p style={{ margin: '0 0 0.5rem' }}>
-                Légnyomás: {weatherData.pressureHpa.toFixed(0)} hPa ({weatherData.pressureTrend})
-              </p>
-              <p style={{ margin: '0 0 0.5rem' }}>
-                Szél: {weatherData.windDirection} {weatherData.windSpeedKph.toFixed(1)} km/h
-              </p>
-              <p style={{ margin: 0 }}>
-                Felhőzet: {weatherData.cloudCoverPercent}% &nbsp;|&nbsp; UV-index: {weatherData.uvIndex.toFixed(1)}
-              </p>
-            </div>
-            <div>
-              <p style={{ margin: '0 0 0.25rem' }}>
-                Csapadék esély: {weatherData.precipitationChancePercent}% &nbsp;|&nbsp; Intenzitás:{' '}
-                {weatherData.precipitationIntensityMmPerHour.toFixed(1)} mm/h
-              </p>
-              <p style={{ margin: 0 }}>
-                Napkelte: {weatherData.sunrise} &nbsp;|&nbsp; Napnyugta: {weatherData.sunset}
-              </p>
+                    )}
                   </div>
-              <div>
-              <p style={{ margin: 0 }}>Holdfázis: {weatherData.moonPhase}</p>
+                </div>
+              )}
+            </div>
+              {/* Vízállás és vízhőmérséklet egymás mellett keretben */}
+              <div className="grid" style={{ 
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gridAutoRows: '1fr'
+              }}>
+                {/* Vízállás */}
+                {waterLoading ? (
+                  <div className="data-field" style={{ 
+                    padding: '0.75rem',
+                    borderRadius: '0.75rem',
+                    backgroundColor: '#dbeafe',
+                    border: '1px solid #93c5fd'
+                  }}>
+                    <div style={{ fontSize: '0.75rem', color: '#1e40af', fontWeight: 600, marginBottom: '0.25rem', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                      <span style={{ fontSize: 'calc(var(--icon-size-base) * 1)' }}>💧</span>
+                      Vízállás
+                    </div>
+                    <div className="data-field-label" style={{ color: '#64748b' }}>adatok betöltése…</div>
+                  </div>
+                ) : waterData?.measurements && waterData.measurements.length > 0 ? (
+                  <div className="data-field" style={{ 
+                    padding: '0.75rem',
+                    borderRadius: '0.75rem',
+                    backgroundColor: '#dbeafe',
+                    border: '1px solid #93c5fd',
+                    position: 'relative'
+                  }}>
+                    <div className="data-field-label" style={{ color: '#1e40af', fontWeight: 600, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                      <span className="data-field-icon">💧</span>
+                      Vízállás
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
+                      <div className="data-field-value" style={{ fontWeight: 700, color: '#1e40af' }}>
+                        {waterData.measurements[waterData.measurements.length - 1].value.toFixed(1)}
+                      </div>
+                      <div className="data-field-label" style={{ fontWeight: 500, color: '#1e40af' }}>{waterData.unit || 'cm'}</div>
+                      <span
+                        style={{
+                          position: 'relative',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '14px',
+                          height: '14px',
+                          borderRadius: '50%',
+                          backgroundColor: '#94a3b8',
+                          color: '#ffffff',
+                          fontSize: '10px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          marginLeft: 'auto',
+                        }}
+                        onMouseEnter={(e) => {
+                          const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
+                          if (tooltip) {
+                            tooltip.style.opacity = '1'
+                            tooltip.style.visibility = 'visible'
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
+                          if (tooltip) {
+                            tooltip.style.opacity = '0'
+                            tooltip.style.visibility = 'hidden'
+                          }
+                        }}
+                      >
+                        i
+                        <span
+                          data-tooltip
+                          style={{
+                            position: 'absolute',
+                            top: '50%',
+                            left: '100%',
+                            transform: 'translateY(-50%)',
+                            marginLeft: '5px',
+                            padding: '6px 10px',
+                            backgroundColor: '#1e293b',
+                            color: '#ffffff',
+                            borderRadius: '4px',
+                            fontSize: '12px',
+                            whiteSpace: 'nowrap',
+                            zIndex: 1000,
+                            pointerEvents: 'none',
+                            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+                            opacity: 0,
+                            visibility: 'hidden',
+                            transition: 'opacity 0.2s, visibility 0.2s',
+                          }}
+                        >
+                          Mérés dátuma: {new Date(waterData.measurements[waterData.measurements.length - 1].date).toLocaleString('hu-HU')}
+                        </span>
+                      </span>
+                    </div>
+                  </div>
+                ) : null}
+                
+                {/* Vízhőmérséklet */}
+                {waterTemperatureLoading ? (
+                  <div className="data-field" style={{ 
+                    padding: '0.75rem',
+                    borderRadius: '0.75rem',
+                    backgroundColor: '#fef3c7',
+                    border: '1px solid #fde68a'
+                  }}>
+                    <div style={{ fontSize: '0.75rem', color: '#d97706', fontWeight: 600, marginBottom: '0.25rem', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                      <span style={{ fontSize: '0.9rem' }}>🌡️</span>
+                      Vízhőmérséklet
+                    </div>
+                    <div className="data-field-label" style={{ color: '#64748b' }}>adatok betöltése…</div>
+                  </div>
+                ) : waterTemperatureError ? (
+                  <div className="data-field" style={{ 
+                    padding: '0.75rem',
+                    borderRadius: '0.75rem',
+                    backgroundColor: '#fee2e2',
+                    border: '1px solid #fca5a5'
+                  }}>
+                    <div style={{ fontSize: '0.75rem', color: '#991b1b', fontWeight: 600, marginBottom: '0.25rem', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                      <span style={{ fontSize: 'calc(var(--icon-size-base) * 1)' }}>🌡️</span>
+                      Vízhőmérséklet
+                    </div>
+                    <div className="data-field-label" style={{ color: '#ef4444' }}>⚠️ {waterTemperatureError}</div>
+                  </div>
+                ) : waterTemperatureData && waterTemperatureData.measurements && waterTemperatureData.measurements.length > 0 && waterTemperatureData.measurements[waterTemperatureData.measurements.length - 1].value != null ? (
+                  <div className="data-field" style={{ 
+                    padding: '0.75rem',
+                    borderRadius: '0.75rem',
+                    backgroundColor: '#fef3c7',
+                    border: '1px solid #fde68a',
+                    position: 'relative'
+                  }}>
+                    <div className="data-field-label" style={{ color: '#d97706', fontWeight: 600, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                      <span className="data-field-icon">🌡️</span>
+                      Vízhőmérséklet
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
+                      <div className="data-field-value" style={{ fontWeight: 700, color: '#d97706' }}>
+                        {typeof waterTemperatureData.measurements[waterTemperatureData.measurements.length - 1].value === 'number' ? waterTemperatureData.measurements[waterTemperatureData.measurements.length - 1].value.toFixed(1) : waterTemperatureData.measurements[waterTemperatureData.measurements.length - 1].value}
+                      </div>
+                      <div className="data-field-label" style={{ fontWeight: 500, color: '#d97706' }}>{waterTemperatureData.unit || '°C'}</div>
+                      <span
+                        style={{
+                          position: 'relative',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '14px',
+                          height: '14px',
+                          borderRadius: '50%',
+                          backgroundColor: '#94a3b8',
+                          color: '#ffffff',
+                          fontSize: '10px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          marginLeft: 'auto',
+                        }}
+                        onMouseEnter={(e) => {
+                          const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
+                          if (tooltip) {
+                            tooltip.style.opacity = '1'
+                            tooltip.style.visibility = 'visible'
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
+                          if (tooltip) {
+                            tooltip.style.opacity = '0'
+                            tooltip.style.visibility = 'hidden'
+                          }
+                        }}
+                      >
+                        i
+                        <span
+                          data-tooltip
+                          style={{
+                            position: 'absolute',
+                            top: '50%',
+                            left: '100%',
+                            transform: 'translateY(-50%)',
+                            marginLeft: '5px',
+                            padding: '6px 10px',
+                            backgroundColor: '#1e293b',
+                            color: '#ffffff',
+                            borderRadius: '4px',
+                            fontSize: '12px',
+                            whiteSpace: 'nowrap',
+                            zIndex: 1000,
+                            pointerEvents: 'none',
+                            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+                            opacity: 0,
+                            visibility: 'hidden',
+                            transition: 'opacity 0.2s, visibility 0.2s',
+                          }}
+                        >
+                          Mérés dátuma: {new Date(waterTemperatureData.measurements[waterTemperatureData.measurements.length - 1].date).toLocaleString('hu-HU')}
+                        </span>
+                      </span>
+                    </div>
+                  </div>
+                ) : !waterTemperatureLoading && waterTemperatureVarId ? (
+                  <div className="data-field" style={{ 
+                    padding: '0.75rem',
+                    borderRadius: '0.75rem',
+                    backgroundColor: '#fef3c7',
+                    border: '1px solid #fde68a'
+                  }}>
+                    <div style={{ fontSize: '0.75rem', color: '#d97706', fontWeight: 600, marginBottom: '0.25rem', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                      <span style={{ fontSize: 'calc(var(--icon-size-base) * 1)' }}>🌡️</span>
+                      Vízhőmérséklet
+                    </div>
+                    <div style={{ fontSize: '0.85rem', color: '#64748b' }}>adatok betöltése...</div>
+                  </div>
+                ) : null}
+              </div>
+              {/* Időjárási adatok modernizált megjelenítéssel */}
+              <div className="flex-col" style={{ 
+                display: 'flex', 
+                flexDirection: 'column',
+                flex: 1,
+                minHeight: 0
+              }}>
+                {/* Levegő hőmérséklet és légnyomás egymás mellett */}
+                <div className="grid" style={{ 
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gridAutoRows: '1fr'
+                }}>
+                  {/* Levegő hőmérséklet */}
+                  <div className="data-field" style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '0.5rem',
+                    padding: '0.75rem',
+                    borderRadius: '0.75rem',
+                    backgroundColor: weatherData.airTemperatureC > 20 ? '#fef3c7' : weatherData.airTemperatureC > 10 ? '#dbeafe' : '#e0e7ff',
+                    border: weatherData.airTemperatureC > 20 ? '1px solid #fde68a' : weatherData.airTemperatureC > 10 ? '1px solid #93c5fd' : '1px solid #c7d2fe',
+                  }}>
+                    <span className="data-field-icon-large">🌡️</span>
+                    <div style={{ flex: 1 }}>
+                      <div className="data-field-label" style={{ color: '#64748b', fontWeight: 500 }}>LEVEGŐ HŐMÉRSÉKLET</div>
+                      <div className="data-field-value" style={{ 
+                        fontWeight: 700, 
+                        color: weatherData.airTemperatureC > 20 ? '#d97706' : weatherData.airTemperatureC > 10 ? '#0369a1' : '#4338ca'
+                      }}>
+                        {weatherData.airTemperatureC.toFixed(1)} °C
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Légnyomás */}
+                  <div className="data-field" style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '0.5rem',
+                    padding: '0.75rem',
+                    borderRadius: '0.75rem',
+                    backgroundColor: '#f1f5f9',
+                    border: '1px solid #e2e8f0',
+                  }}>
+                    <span className="data-field-icon-large">📊</span>
+                    <div style={{ flex: 1 }}>
+                      <div className="data-field-label" style={{ color: '#64748b', fontWeight: 500 }}>LÉGNYOMÁS</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                        <span className="data-field-value" style={{ fontWeight: 700, color: '#475569' }}>
+                          {weatherData.pressureHpa.toFixed(0)} hPa
+                        </span>
+                        <span style={{ 
+                          padding: '0.25rem 0.5rem',
+                          borderRadius: '0.375rem',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          backgroundColor: weatherData.pressureTrend === 'rising' ? '#dcfce7' : weatherData.pressureTrend === 'falling' ? '#fee2e2' : '#f3f4f6',
+                          color: weatherData.pressureTrend === 'rising' ? '#166534' : weatherData.pressureTrend === 'falling' ? '#991b1b' : '#6b7280',
+                          width: 'fit-content'
+                        }}>
+                          {weatherData.pressureTrend === 'rising' ? '↑ Emelkedik' : weatherData.pressureTrend === 'falling' ? '↓ Csökken' : '→ Stabil'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="grid" style={{ 
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gridAutoRows: '1fr'
+                }}>
+                  <div className="data-field" style={{ 
+                    padding: '0.75rem',
+                    borderRadius: '0.75rem',
+                    backgroundColor: '#f8fafc',
+                    border: '1px solid #e2e8f0'
+                  }}>
+                    <div className="data-field-label" style={{ color: '#64748b', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                      <span className="data-field-icon">☁️</span>
+                      FELHŐZET
+                    </div>
+                    <div className="data-field-value" style={{ fontWeight: 700, color: '#1e293b' }}>{weatherData.cloudCoverPercent}%</div>
+                  </div>
+                  <div className="data-field" style={{ 
+                    padding: '0.75rem',
+                    borderRadius: '0.75rem',
+                    backgroundColor: '#eff6ff',
+                    border: '1px solid #bfdbfe'
+                  }}>
+                    <div className="data-field-label" style={{ color: '#64748b', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                      <span className="data-field-icon">🌧️</span>
+                      CSAPADÉK ESÉLY
+                    </div>
+                    <div className="data-field-value" style={{ fontWeight: 700, color: '#0369a1' }}>{weatherData.precipitationChancePercent}%</div>
+                    <div className="data-field-label" style={{ color: '#64748b', marginTop: '0.25rem' }}>
+                      {weatherData.precipitationIntensityMmPerHour.toFixed(1)} mm/h
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Szél és holdfázis egymás mellett */}
+                <div className="grid" style={{ 
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gridAutoRows: '1fr'
+                }}>
+                  <div className="data-field" style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '0.5rem',
+                    padding: '0.75rem',
+                    borderRadius: '0.75rem',
+                    backgroundColor: '#f0f9ff',
+                    border: '1px solid #bae6fd',
+                  }}>
+                    <span className="data-field-icon-large">💨</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 500, marginBottom: '0.25rem' }}>SZÉL</div>
+                      <div className="data-field-value" style={{ fontWeight: 700, color: '#0369a1' }}>
+                        {weatherData.windDirection} {weatherData.windSpeedKph.toFixed(1)} km/h
+                      </div>
+                    </div>
+                  </div>
+                  <div className="data-field" style={{ 
+                    padding: '0.75rem',
+                    borderRadius: '0.75rem',
+                    backgroundColor: '#f3f4f6',
+                    border: '1px solid #e5e7eb'
+                  }}>
+                    <div className="data-field-label" style={{ color: '#64748b', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                      <span className="data-field-icon">🌙</span>
+                      HOLDFÁZIS
+                    </div>
+                    <div className="data-field-value" style={{ fontWeight: 600, color: '#1e293b' }}>{weatherData.moonPhase}</div>
+                  </div>
+                </div>
+                
+                <div className="grid" style={{ 
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gridAutoRows: '1fr'
+                }}>
+                  <div className="data-field" style={{ 
+                    padding: '0.75rem',
+                    borderRadius: '0.75rem',
+                    backgroundColor: '#fffbeb',
+                    border: '1px solid #fde68a'
+                  }}>
+                    <div className="data-field-label" style={{ color: '#64748b', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                      <span className="data-field-icon">☀️</span>
+                      UV-INDEX
+                    </div>
+                    <div className="data-field-value" style={{ fontWeight: 700, color: '#d97706' }}>{weatherData.uvIndex.toFixed(1)}</div>
+                  </div>
+                  <div className="data-field" style={{ 
+                    padding: '0.75rem',
+                    borderRadius: '0.75rem',
+                    backgroundColor: '#fef3c7',
+                    border: '1px solid #fde68a'
+                  }}>
+                    <div className="data-field-label" style={{ color: '#64748b', fontWeight: 500 }}>NAP</div>
+                    <div className="data-field-value" style={{ fontWeight: 600, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: 'var(--data-field-value-size)' }}>
+                      <span className="data-field-icon">🌅</span> {weatherData.sunrise}
+                    </div>
+                    <div className="data-field-value" style={{ fontWeight: 600, color: '#1e293b', marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: 'var(--data-field-value-size)' }}>
+                      <span className="data-field-icon">🌇</span> {weatherData.sunset}
+                    </div>
+                  </div>
+                </div>
               </div>
           </div>
-            {/* Back side - Vízállás adatok */}
-            <div
-              className="card-back"
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '1rem',
-                padding: '1.5rem',
-                borderRadius: '0.75rem',
-                border: '1px solid #e0e0e0',
-                backgroundColor: '#FFFFF7',
-                color: '#0f172a',
-              }}
-            >
+                {/* Back side - Vízállás adatok */}
+                <div
+                  ref={cardBackRef}
+                  className="card-back"
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '1rem',
+                    padding: '1.25rem',
+                    borderRadius: '1rem',
+                    border: 'none',
+                    background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.6) 0%, rgba(248, 250, 252, 0.6) 100%)',
+                    color: '#0f172a',
+                    boxSizing: 'border-box',
+                    overflowX: 'hidden',
+                    overflowY: 'auto',
+                    wordWrap: 'break-word',
+                    overflowWrap: 'break-word',
+                    height: '100%',
+                  }}
+                >
                   {user && waterData ? (
                 <>
-                  <h2 style={{ marginBottom: '0.5rem', marginTop: 0 }}>Vízállás adatok</h2>
+                  <h2 style={{ 
+                    marginBottom: '1rem', 
+                    marginTop: 0,
+                    fontSize: '1.25rem',
+                    fontWeight: 700,
+                    color: '#1e293b',
+                    borderBottom: '2px solid #e2e8f0',
+                    paddingBottom: '0.75rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
+                  }}>
+                    <span style={{ fontSize: 'calc(var(--icon-size-base) * 1.5)' }}>💧</span>
+                    Vízállás adatok
+                  </h2>
                   {forecastLoading ? (
                     <p>Előrejelzés betöltése…</p>
                   ) : forecastError ? (
@@ -2213,7 +2580,7 @@ function App() {
                               
                               // Következő 3 nap (előrejelzés)
                               const dailyForecasts = firstForecastForChart.forecasts.reduce((acc: typeof firstForecastForChart.forecasts, forecast) => {
-                          const date = new Date(forecast.date)
+                                const date = new Date(forecast.date)
                                 const dateKey = date.toISOString().split('T')[0]
                           const existing = acc.find((f) => {
                             const fDate = new Date(f.date)
@@ -2461,6 +2828,8 @@ function App() {
         <h2 style={{ fontSize: '1.25rem', marginBottom: '1rem' }}>Mentett bejegyzések</h2>
         {!user ? (
           <p>Bejelentkezés után érheted el a mentett rekordokat.</p>
+        ) : records.length === 0 ? (
+          <p style={{ color: '#FFFFF7', fontSize: '0.9rem' }}>Nincs mentett rekord. Adj meg egy helyszínt és mentsd el.</p>
         ) : (
           <>
             <div
@@ -2562,16 +2931,18 @@ function App() {
                 }}
                 style={{
                   position: 'relative',
-                  width: '90%',
+                  width: '100%',
                   maxWidth: '100%',
-                  height: 'auto',
-                  minHeight: '440px',
+                  height: '90vh',
+                  maxHeight: '90vh',
                   cursor: 'pointer',
                   transformStyle: 'preserve-3d',
                   transition: 'transform 0.6s ease-in-out',
                   borderRadius: '0.75rem',
                   overflow: 'hidden',
                   boxSizing: 'border-box',
+                  padding: 0,
+                  margin: 0,
                 }}
               >
                 {/* Front side - Időjárási adatok */}
@@ -2581,21 +2952,48 @@ function App() {
                 display: 'flex',
                 flexDirection: 'column',
                     gap: '1rem',
-                    padding: '1.5rem',
-                    borderRadius: '0.75rem',
-                    border: '1px solid #e0e0e0',
-                    backgroundColor: '#FFFFF7',
+                    padding: '1.25rem',
+                    borderRadius: '1rem',
+                    border: 'none',
+                    background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.6) 0%, rgba(248, 250, 252, 0.6) 100%)',
                     color: '#0f172a',
+                    boxSizing: 'border-box',
+                    overflowX: 'hidden',
+                    overflowY: 'auto',
+                    wordWrap: 'break-word',
+                    overflowWrap: 'break-word',
+                    height: '100%',
                   }}
                 >
-                  <div>
-                    <p style={{ margin: '0 0 0.5rem', fontSize: '0.9rem', color: '#000000' }}>
+                  {/* Card Header - Kiemelt fejléc dátum, helyszín és vízterülettel */}
+                  <div className="data-card-header" style={{ 
+                    background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
+                    border: '2px solid #93c5fd',
+                    borderRadius: '0.75rem',
+                    padding: '1rem 1.25rem',
+                    marginBottom: '1.25rem',
+                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: '1rem',
+                    flexWrap: 'wrap'
+                  }}>
+                    {/* Dátum - bal oldal */}
+                    <div style={{ 
+                      fontSize: '0.85rem', 
+                      color: '#64748b',
+                      fontWeight: 500,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.25rem'
+                    }}>
                       {(() => {
                         if (selectedRecord.date && selectedRecord.time) {
                           return (
                             <>
-                              <span style={{ fontWeight: 'bold' }}>{selectedRecord.date}</span>{' '}
-                              <span>{selectedRecord.time}</span>
+                              <span style={{ fontWeight: 600, color: '#1e293b', fontSize: '0.9rem' }}>{selectedRecord.date}</span>
+                              <span style={{ fontSize: '0.8rem' }}>{selectedRecord.time}</span>
                             </>
                           )
                         }
@@ -2604,15 +3002,60 @@ function App() {
                         const time = now.toTimeString().split(' ')[0].slice(0, 5)
                         return (
                           <>
-                            <span style={{ fontWeight: 'bold' }}>{date}</span>{' '}
-                            <span>{time}</span>
+                            <span style={{ fontWeight: 600, color: '#1e293b', fontSize: '0.9rem' }}>{date}</span>
+                            <span style={{ fontSize: '0.8rem' }}>{time}</span>
                           </>
                         )
                       })()}
-                    </p>
-                    <h3 style={{ margin: '0 0 0.5rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                      {selectedRecord.locationName}
-                          {selectedRecord.coordinates && (
+                    </div>
+                    
+                    {/* Helyszín - közép */}
+                    <div style={{ 
+                      flex: 1,
+                      display: 'flex', 
+                      flexDirection: 'column',
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      gap: '0.25rem',
+                      minWidth: '150px'
+                    }}>
+                      <h3 style={{ 
+                        margin: 0, 
+                        fontSize: '1.25rem',
+                        fontWeight: 700,
+                        color: '#1e293b',
+                        letterSpacing: '-0.01em',
+                        textAlign: 'center'
+                      }}>
+                        {selectedRecord.locationName}
+                      </h3>
+                      {selectedRecord.coordinates && (
+                        <div style={{
+                          fontSize: '0.75rem',
+                          color: '#64748b',
+                          fontWeight: 500,
+                          textAlign: 'center'
+                        }}>
+                          {selectedRecord.coordinates.lat.toFixed(4)}, {selectedRecord.coordinates.lon.toFixed(4)}
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Vízterület - jobb oldal */}
+                    {selectedRecord.waterDataSnapshot?.water && (
+                      <div style={{ 
+                        fontSize: '0.9rem',
+                        fontWeight: 600,
+                        color: '#0369a1',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        textAlign: 'right'
+                      }}>
+                        <span style={{ fontSize: '1.25rem' }}>🌊</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem' }}>
+                          <span style={{ fontSize: '1.25rem' }}>{selectedRecord.waterDataSnapshot.water}</span>
+                          {selectedRecord.waterDataSnapshot.station && (
                             <span
                               style={{
                                 position: 'relative',
@@ -2627,7 +3070,6 @@ function App() {
                                 fontSize: '10px',
                                 fontWeight: 600,
                                 cursor: 'pointer',
-                                marginLeft: '0.25rem',
                               }}
                               onMouseEnter={(e) => {
                                 const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
@@ -2667,15 +3109,55 @@ function App() {
                                   transition: 'opacity 0.2s, visibility 0.2s',
                                 }}
                               >
-                                Koordináták: {selectedRecord.coordinates.lat.toFixed(4)}, {selectedRecord.coordinates.lon.toFixed(4)}
-                  </span>
-                    </span>
+                                Legközelebbi mérőállomás: {selectedRecord.waterDataSnapshot.station}
+                              </span>
+                            </span>
                           )}
-                        </h3>
+                        </div>
                       </div>
+                    )}
+                  </div>
+                      {selectedRecord.caughtFish && selectedRecord.caughtFish.length > 0 && (
+                        <div style={{ marginBottom: '0.5rem' }}>
+                          <p style={{ margin: '0 0 0.25rem', fontSize: '0.85rem', fontWeight: 600, color: '#0f172a' }}>
+                            Fogott halak:
+                          </p>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                            {selectedRecord.caughtFish.map((fish, index) => (
+                              <span
+                                key={index}
+                                style={{
+                                  padding: '0.25rem 0.75rem',
+                                  borderRadius: '1rem',
+                                  backgroundColor: '#e0f2fe',
+                                  color: '#0369a1',
+                                  fontSize: '0.85rem',
+                                  fontWeight: 500,
+                                  textTransform: 'capitalize',
+                                  border: '1px solid #bae6fd',
+                                }}
+                              >
+                                {fish}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                         {selectedRecord.waterDataSnapshot?.water && (
-                          <p style={{ margin: '0 0 0.5rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                            <strong>{selectedRecord.waterDataSnapshot.water}</strong>
+                          <div style={{ 
+                            padding: '0.75rem',
+                            borderRadius: '0.75rem',
+                            backgroundColor: '#e0f2fe',
+                            border: '1px solid #bae6fd',
+                            marginBottom: '0.75rem'
+                          }}>
+                            <div style={{ fontSize: '0.75rem', color: '#0369a1', fontWeight: 600, marginBottom: '0.25rem', textTransform: 'uppercase' }}>
+                              Víztest
+                            </div>
+                            <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0369a1', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <span style={{ fontSize: '1.25rem' }}>🌊</span>
+                              {selectedRecord.waterDataSnapshot.water}
+                            </div>
                             {selectedRecord.waterDataSnapshot.station && (
                               <span
                                 style={{
@@ -2735,162 +3217,353 @@ function App() {
                   </span>
                               </span>
                             )}
-                          </p>
+                          </div>
                         )}
-                        {selectedRecord.waterDataSnapshot?.measurements && selectedRecord.waterDataSnapshot.measurements.length > 0 ? (
-                          <p style={{ margin: '0 0 0.5rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                            Vízállás: {selectedRecord.waterDataSnapshot.measurements[selectedRecord.waterDataSnapshot.measurements.length - 1].value.toFixed(1)}{' '}
-                            {selectedRecord.waterDataSnapshot.unit || 'cm'}
-                            <span
-                      style={{
-                                position: 'relative',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                width: '14px',
-                                height: '14px',
-                                borderRadius: '50%',
-                                backgroundColor: '#94a3b8',
-                                color: '#ffffff',
-                                fontSize: '10px',
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                                marginLeft: '0.25rem',
-                              }}
-                              onMouseEnter={(e) => {
-                                const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
-                                if (tooltip) {
-                                  tooltip.style.opacity = '1'
-                                  tooltip.style.visibility = 'visible'
-                                }
-                              }}
-                              onMouseLeave={(e) => {
-                                const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
-                                if (tooltip) {
-                                  tooltip.style.opacity = '0'
-                                  tooltip.style.visibility = 'hidden'
-                                }
-                      }}
-                    >
-                              i
-                              <span
-                                data-tooltip
-                                style={{
-                                  position: 'absolute',
-                                  top: '50%',
-                                  left: '100%',
-                                  transform: 'translateY(-50%)',
-                                  marginLeft: '5px',
-                                  padding: '6px 10px',
-                                  backgroundColor: '#1e293b',
-                                  color: '#ffffff',
-                                  borderRadius: '4px',
-                                  fontSize: '12px',
-                                  whiteSpace: 'nowrap',
-                                  zIndex: 1000,
-                                  pointerEvents: 'none',
-                                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
-                                  opacity: 0,
-                                  visibility: 'hidden',
-                                  transition: 'opacity 0.2s, visibility 0.2s',
-                                }}
-                              >
-                                Mérés dátuma: {new Date(selectedRecord.waterDataSnapshot.measurements[selectedRecord.waterDataSnapshot.measurements.length - 1].date).toLocaleString('hu-HU')}
-                              </span>
-                            </span>
-                          </p>
-                        ) : null}
-                        {selectedRecord.waterTemperatureSnapshot?.measurements && selectedRecord.waterTemperatureSnapshot.measurements.length > 0 && selectedRecord.waterTemperatureSnapshot.measurements[selectedRecord.waterTemperatureSnapshot.measurements.length - 1].value != null ? (
-                          <p style={{ margin: '0 0 0.5rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                            Vízhőmérséklet: {typeof selectedRecord.waterTemperatureSnapshot.measurements[selectedRecord.waterTemperatureSnapshot.measurements.length - 1].value === 'number' ? selectedRecord.waterTemperatureSnapshot.measurements[selectedRecord.waterTemperatureSnapshot.measurements.length - 1].value.toFixed(1) : selectedRecord.waterTemperatureSnapshot.measurements[selectedRecord.waterTemperatureSnapshot.measurements.length - 1].value}{' '}
-                            {selectedRecord.waterTemperatureSnapshot.unit || '°C'}
-                            <span
-                              style={{
-                                position: 'relative',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                width: '14px',
-                                height: '14px',
-                                borderRadius: '50%',
-                                backgroundColor: '#94a3b8',
-                                color: '#ffffff',
-                                fontSize: '10px',
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                                marginLeft: '0.25rem',
-                              }}
-                              onMouseEnter={(e) => {
-                                const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
-                                if (tooltip) {
-                                  tooltip.style.opacity = '1'
-                                  tooltip.style.visibility = 'visible'
-                                }
-                              }}
-                              onMouseLeave={(e) => {
-                                const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
-                                if (tooltip) {
-                                  tooltip.style.opacity = '0'
-                                  tooltip.style.visibility = 'hidden'
-                                }
-                              }}
-                            >
-                              i
-                              <span
-                                data-tooltip
-                                style={{
-                                  position: 'absolute',
-                                  top: '50%',
-                                  left: '100%',
-                                  transform: 'translateY(-50%)',
-                                  marginLeft: '5px',
-                                  padding: '6px 10px',
-                                  backgroundColor: '#1e293b',
-                                  color: '#ffffff',
-                                  borderRadius: '4px',
-                                  fontSize: '12px',
-                                  whiteSpace: 'nowrap',
-                                  zIndex: 1000,
-                                  pointerEvents: 'none',
-                                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
-                                  opacity: 0,
-                                  visibility: 'hidden',
-                                  transition: 'opacity 0.2s, visibility 0.2s',
-                                }}
-                              >
-                                Mérés dátuma: {new Date(selectedRecord.waterTemperatureSnapshot.measurements[selectedRecord.waterTemperatureSnapshot.measurements.length - 1].date).toLocaleString('hu-HU')}
-                              </span>
-                            </span>
-                          </p>
+                        {/* Vízállás és vízhőmérséklet egymás mellett keretben */}
+                        {(selectedRecord.waterDataSnapshot?.measurements && selectedRecord.waterDataSnapshot.measurements.length > 0) || (selectedRecord.waterTemperatureSnapshot?.measurements && selectedRecord.waterTemperatureSnapshot.measurements.length > 0 && selectedRecord.waterTemperatureSnapshot.measurements[selectedRecord.waterTemperatureSnapshot.measurements.length - 1].value != null) ? (
+                          <div className="grid" style={{ 
+                            display: 'grid',
+                            gridTemplateColumns: '1fr 1fr',
+                            gridAutoRows: '1fr'
+                          }}>
+                            {/* Vízállás */}
+                            {selectedRecord.waterDataSnapshot?.measurements && selectedRecord.waterDataSnapshot.measurements.length > 0 ? (
+                              <div className="data-field" style={{ 
+                                padding: '0.75rem',
+                                borderRadius: '0.75rem',
+                                backgroundColor: '#dbeafe',
+                                border: '1px solid #93c5fd',
+                                position: 'relative'
+                              }}>
+                                <div className="data-field-label" style={{ color: '#1e40af', fontWeight: 600, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                  <span className="data-field-icon">💧</span>
+                                  Vízállás
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
+                                  <div className="data-field-value" style={{ fontWeight: 700, color: '#1e40af' }}>
+                                    {selectedRecord.waterDataSnapshot.measurements[selectedRecord.waterDataSnapshot.measurements.length - 1].value.toFixed(1)}
+                                  </div>
+                                  <div className="data-field-label" style={{ fontWeight: 500, color: '#1e40af' }}>{selectedRecord.waterDataSnapshot.unit || 'cm'}</div>
+                                  <span
+                                    style={{
+                                      position: 'relative',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      width: '14px',
+                                      height: '14px',
+                                      borderRadius: '50%',
+                                      backgroundColor: '#94a3b8',
+                                      color: '#ffffff',
+                                      fontSize: '10px',
+                                      fontWeight: 600,
+                                      cursor: 'pointer',
+                                      marginLeft: 'auto',
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
+                                      if (tooltip) {
+                                        tooltip.style.opacity = '1'
+                                        tooltip.style.visibility = 'visible'
+                                      }
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
+                                      if (tooltip) {
+                                        tooltip.style.opacity = '0'
+                                        tooltip.style.visibility = 'hidden'
+                                      }
+                                    }}
+                                  >
+                                    i
+                                    <span
+                                      data-tooltip
+                                      style={{
+                                        position: 'absolute',
+                                        top: '50%',
+                                        left: '100%',
+                                        transform: 'translateY(-50%)',
+                                        marginLeft: '5px',
+                                        padding: '6px 10px',
+                                        backgroundColor: '#1e293b',
+                                        color: '#ffffff',
+                                        borderRadius: '4px',
+                                        fontSize: '12px',
+                                        whiteSpace: 'nowrap',
+                                        zIndex: 1000,
+                                        pointerEvents: 'none',
+                                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+                                        opacity: 0,
+                                        visibility: 'hidden',
+                                        transition: 'opacity 0.2s, visibility 0.2s',
+                                      }}
+                                    >
+                                      Mérés dátuma: {new Date(selectedRecord.waterDataSnapshot.measurements[selectedRecord.waterDataSnapshot.measurements.length - 1].date).toLocaleString('hu-HU')}
+                                    </span>
+                                  </span>
+                                </div>
+                              </div>
+                            ) : null}
+                            
+                            {/* Vízhőmérséklet */}
+                            {selectedRecord.waterTemperatureSnapshot?.measurements && selectedRecord.waterTemperatureSnapshot.measurements.length > 0 && selectedRecord.waterTemperatureSnapshot.measurements[selectedRecord.waterTemperatureSnapshot.measurements.length - 1].value != null ? (
+                              <div className="data-field" style={{ 
+                                padding: '0.75rem',
+                                borderRadius: '0.75rem',
+                                backgroundColor: '#fef3c7',
+                                border: '1px solid #fde68a',
+                                position: 'relative'
+                              }}>
+                                <div className="data-field-label" style={{ color: '#d97706', fontWeight: 600, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                  <span className="data-field-icon">🌡️</span>
+                                  Vízhőmérséklet
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
+                                  <div className="data-field-value" style={{ fontWeight: 700, color: '#d97706' }}>
+                                    {typeof selectedRecord.waterTemperatureSnapshot.measurements[selectedRecord.waterTemperatureSnapshot.measurements.length - 1].value === 'number' ? selectedRecord.waterTemperatureSnapshot.measurements[selectedRecord.waterTemperatureSnapshot.measurements.length - 1].value.toFixed(1) : selectedRecord.waterTemperatureSnapshot.measurements[selectedRecord.waterTemperatureSnapshot.measurements.length - 1].value}
+                                  </div>
+                                  <div className="data-field-label" style={{ fontWeight: 500, color: '#d97706' }}>{selectedRecord.waterTemperatureSnapshot.unit || '°C'}</div>
+                                  <span
+                                    style={{
+                                      position: 'relative',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      width: '14px',
+                                      height: '14px',
+                                      borderRadius: '50%',
+                                      backgroundColor: '#94a3b8',
+                                      color: '#ffffff',
+                                      fontSize: '10px',
+                                      fontWeight: 600,
+                                      cursor: 'pointer',
+                                      marginLeft: 'auto',
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
+                                      if (tooltip) {
+                                        tooltip.style.opacity = '1'
+                                        tooltip.style.visibility = 'visible'
+                                      }
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
+                                      if (tooltip) {
+                                        tooltip.style.opacity = '0'
+                                        tooltip.style.visibility = 'hidden'
+                                      }
+                                    }}
+                                  >
+                                    i
+                                    <span
+                                      data-tooltip
+                                      style={{
+                                        position: 'absolute',
+                                        top: '50%',
+                                        left: '100%',
+                                        transform: 'translateY(-50%)',
+                                        marginLeft: '5px',
+                                        padding: '6px 10px',
+                                        backgroundColor: '#1e293b',
+                                        color: '#ffffff',
+                                        borderRadius: '4px',
+                                        fontSize: '12px',
+                                        whiteSpace: 'nowrap',
+                                        zIndex: 1000,
+                                        pointerEvents: 'none',
+                                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+                                        opacity: 0,
+                                        visibility: 'hidden',
+                                        transition: 'opacity 0.2s, visibility 0.2s',
+                                      }}
+                                    >
+                                      Mérés dátuma: {new Date(selectedRecord.waterTemperatureSnapshot.measurements[selectedRecord.waterTemperatureSnapshot.measurements.length - 1].date).toLocaleString('hu-HU')}
+                                    </span>
+                                  </span>
+                                </div>
+                              </div>
+                            ) : null}
+                          </div>
                         ) : null}
                         {selectedRecord.weatherSnapshot ? (
                           <>
                       <div>
-                              <p style={{ margin: '0 0 0.5rem' }}>
-                                Levegő hőmérséklet: {selectedRecord.weatherSnapshot.airTemperatureC.toFixed(1)} °C
-                              </p>
-                              <p style={{ margin: '0 0 0.5rem' }}>
-                                Légnyomás: {selectedRecord.weatherSnapshot.pressureHpa.toFixed(0)} hPa ({selectedRecord.weatherSnapshot.pressureTrend})
-                              </p>
-                              <p style={{ margin: '0 0 0.5rem' }}>
-                                Szél: {selectedRecord.weatherSnapshot.windDirection} {selectedRecord.weatherSnapshot.windSpeedKph.toFixed(1)} km/h
-                              </p>
-                        <p style={{ margin: 0 }}>
-                                Felhőzet: {selectedRecord.weatherSnapshot.cloudCoverPercent}% &nbsp;|&nbsp; UV-index: {selectedRecord.weatherSnapshot.uvIndex.toFixed(1)}
-                        </p>
-                      </div>
-                      <div>
-                        <p style={{ margin: '0 0 0.25rem' }}>
-                          Csapadék esély: {selectedRecord.weatherSnapshot.precipitationChancePercent}% &nbsp;|&nbsp; Intenzitás:{' '}
-                          {selectedRecord.weatherSnapshot.precipitationIntensityMmPerHour.toFixed(1)} mm/h
-                        </p>
-                        <p style={{ margin: 0 }}>
-                          Napkelte: {selectedRecord.weatherSnapshot.sunrise} &nbsp;|&nbsp; Napnyugta: {selectedRecord.weatherSnapshot.sunset}
-                        </p>
-                      </div>
-                      <div>
-                        <p style={{ margin: 0 }}>Holdfázis: {selectedRecord.weatherSnapshot.moonPhase}</p>
-                      </div>
+                              {/* Időjárási adatok modernizált megjelenítéssel */}
+                              <div className="flex-col" style={{ 
+                                display: 'flex', 
+                                flexDirection: 'column',
+                                flex: 1,
+                                minHeight: 0
+                              }}>
+                                {/* Levegő hőmérséklet és légnyomás egymás mellett */}
+                                <div className="grid" style={{ 
+                                  display: 'grid',
+                                  gridTemplateColumns: '1fr 1fr',
+                                  gridAutoRows: '1fr',
+                                  gap: '0.75rem'
+                                }}>
+                                  {/* Levegő hőmérséklet */}
+                                  <div className="data-field" style={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: '0.5rem',
+                                    padding: '0.75rem',
+                                    borderRadius: '0.75rem',
+                                    backgroundColor: selectedRecord.weatherSnapshot.airTemperatureC > 20 ? '#fef3c7' : selectedRecord.weatherSnapshot.airTemperatureC > 10 ? '#dbeafe' : '#e0e7ff',
+                                    border: selectedRecord.weatherSnapshot.airTemperatureC > 20 ? '1px solid #fde68a' : selectedRecord.weatherSnapshot.airTemperatureC > 10 ? '1px solid #93c5fd' : '1px solid #c7d2fe',
+                                  }}>
+                                    <span className="data-field-icon-large">🌡️</span>
+                                    <div style={{ flex: 1 }}>
+                                      <div className="data-field-label" style={{ color: '#64748b', fontWeight: 500 }}>LEVEGŐ HŐMÉRSÉKLET</div>
+                                      <div className="data-field-value" style={{ 
+                                        fontWeight: 700, 
+                                        color: selectedRecord.weatherSnapshot.airTemperatureC > 20 ? '#d97706' : selectedRecord.weatherSnapshot.airTemperatureC > 10 ? '#0369a1' : '#4338ca'
+                                      }}>
+                                        {selectedRecord.weatherSnapshot.airTemperatureC.toFixed(1)} °C
+                                      </div>
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Légnyomás */}
+                                  <div className="data-field" style={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: '0.5rem',
+                                    padding: '0.75rem',
+                                    borderRadius: '0.75rem',
+                                    backgroundColor: '#f1f5f9',
+                                    border: '1px solid #e2e8f0',
+                                  }}>
+                                    <span className="data-field-icon-large">📊</span>
+                                    <div style={{ flex: 1 }}>
+                                      <div className="data-field-label" style={{ color: '#64748b', fontWeight: 500 }}>LÉGNYOMÁS</div>
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                        <span className="data-field-value" style={{ fontWeight: 700, color: '#475569' }}>
+                                          {selectedRecord.weatherSnapshot.pressureHpa.toFixed(0)} hPa
+                                        </span>
+                                        <span style={{ 
+                                          padding: '0.25rem 0.5rem',
+                                          borderRadius: '0.375rem',
+                                          fontSize: '0.75rem',
+                                          fontWeight: 600,
+                                          backgroundColor: selectedRecord.weatherSnapshot.pressureTrend === 'rising' ? '#dcfce7' : selectedRecord.weatherSnapshot.pressureTrend === 'falling' ? '#fee2e2' : '#f3f4f6',
+                                          color: selectedRecord.weatherSnapshot.pressureTrend === 'rising' ? '#166534' : selectedRecord.weatherSnapshot.pressureTrend === 'falling' ? '#991b1b' : '#6b7280',
+                                          width: 'fit-content'
+                                        }}>
+                                          {selectedRecord.weatherSnapshot.pressureTrend === 'rising' ? '↑ Emelkedik' : selectedRecord.weatherSnapshot.pressureTrend === 'falling' ? '↓ Csökken' : '→ Stabil'}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                              </div>
+                                <div className="grid" style={{ 
+                                  display: 'grid',
+                                  gridTemplateColumns: '1fr 1fr',
+                                  gridAutoRows: '1fr',
+                                  gap: '0.75rem'
+                                }}>
+                                  <div className="data-field" style={{ 
+                                    padding: '0.75rem',
+                                    borderRadius: '0.75rem',
+                                    backgroundColor: '#f8fafc',
+                                    border: '1px solid #e2e8f0'
+                                  }}>
+                                    <div className="data-field-label" style={{ color: '#64748b', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                      <span className="data-field-icon">☁️</span>
+                                      FELHŐZET
+                                    </div>
+                                    <div className="data-field-value" style={{ fontWeight: 700, color: '#1e293b' }}>{selectedRecord.weatherSnapshot.cloudCoverPercent}%</div>
+                                  </div>
+                                  <div className="data-field" style={{ 
+                                    padding: '0.75rem',
+                                    borderRadius: '0.75rem',
+                                    backgroundColor: '#eff6ff',
+                                    border: '1px solid #bfdbfe'
+                                  }}>
+                                    <div className="data-field-label" style={{ color: '#64748b', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                      <span className="data-field-icon">🌧️</span>
+                                      CSAPADÉK ESÉLY
+                                    </div>
+                                    <div className="data-field-value" style={{ fontWeight: 700, color: '#0369a1' }}>{selectedRecord.weatherSnapshot.precipitationChancePercent}%</div>
+                                    <div className="data-field-label" style={{ color: '#64748b', marginTop: '0.25rem' }}>
+                                      {selectedRecord.weatherSnapshot.precipitationIntensityMmPerHour.toFixed(1)} mm/h
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                {/* Szél és holdfázis egymás mellett */}
+                <div className="grid" style={{ 
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gridAutoRows: '1fr'
+                }}>
+                                  <div className="data-field" style={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: '0.5rem',
+                                    padding: '0.75rem',
+                                    borderRadius: '0.75rem',
+                                    backgroundColor: '#f0f9ff',
+                                    border: '1px solid #bae6fd',
+                                  }}>
+                                    <span className="data-field-icon-large">💨</span>
+                                    <div style={{ flex: 1 }}>
+                                      <div className="data-field-label" style={{ color: '#64748b', fontWeight: 500 }}>SZÉL</div>
+                                      <div className="data-field-value" style={{ fontWeight: 700, color: '#0369a1' }}>
+                                        {selectedRecord.weatherSnapshot.windDirection} {selectedRecord.weatherSnapshot.windSpeedKph.toFixed(1)} km/h
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="data-field" style={{ 
+                                    padding: '0.75rem',
+                                    borderRadius: '0.75rem',
+                                    backgroundColor: '#f3f4f6',
+                                    border: '1px solid #e5e7eb'
+                                  }}>
+                                    <div className="data-field-label" style={{ color: '#64748b', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                      <span className="data-field-icon">🌙</span>
+                                      HOLDFÁZIS
+                                    </div>
+                                    <div className="data-field-value" style={{ fontWeight: 600, color: '#1e293b' }}>{selectedRecord.weatherSnapshot.moonPhase}</div>
+                                  </div>
+                                </div>
+                                
+                                <div className="grid" style={{ 
+                                  display: 'grid',
+                                  gridTemplateColumns: '1fr 1fr',
+                                  gridAutoRows: '1fr',
+                                  gap: '0.75rem'
+                                }}>
+                                  <div className="data-field" style={{ 
+                                    padding: '0.75rem',
+                                    borderRadius: '0.75rem',
+                                    backgroundColor: '#fffbeb',
+                                    border: '1px solid #fde68a'
+                                  }}>
+                                    <div className="data-field-label" style={{ color: '#64748b', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                      <span className="data-field-icon">☀️</span>
+                                      UV-INDEX
+                                    </div>
+                                    <div className="data-field-value" style={{ fontWeight: 700, color: '#d97706' }}>{selectedRecord.weatherSnapshot.uvIndex.toFixed(1)}</div>
+                                  </div>
+                                  <div className="data-field" style={{ 
+                                    padding: '0.75rem',
+                                    borderRadius: '0.75rem',
+                                    backgroundColor: '#fef3c7',
+                                    border: '1px solid #fde68a'
+                                  }}>
+                                    <div className="data-field-label" style={{ color: '#64748b', fontWeight: 500 }}>NAP</div>
+                                    <div className="data-field-value" style={{ fontWeight: 600, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: 'var(--data-field-value-size)' }}>
+                                      <span className="data-field-icon">🌅</span> {selectedRecord.weatherSnapshot.sunrise}
+                                    </div>
+                                    <div className="data-field-value" style={{ fontWeight: 600, color: '#1e293b', marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: 'var(--data-field-value-size)' }}>
+                                      <span className="data-field-icon">🌇</span> {selectedRecord.weatherSnapshot.sunset}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
                     </>
                   ) : (
                     <p style={{ textAlign: 'center', color: '#64748b', marginTop: '2rem' }}>
@@ -2898,23 +3571,43 @@ function App() {
                     </p>
                   )}
                 </div>
-                {/* Back side - Vízállás adatok */}
-                <div
-                  className="card-back"
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '1rem',
-                    padding: '1.5rem',
-                    borderRadius: '0.75rem',
-                    border: '1px solid #e0e0e0',
-                    backgroundColor: '#FFFFF7',
-                    color: '#0f172a',
-                  }}
-                >
+            {/* Back side - Vízállás adatok */}
+            <div
+              className="card-back"
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1rem',
+                padding: '1.25rem',
+                borderRadius: '1rem',
+                border: 'none',
+                background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.6) 0%, rgba(248, 250, 252, 0.6) 100%)',
+                color: '#0f172a',
+                boxSizing: 'border-box',
+                overflowX: 'hidden',
+                overflowY: 'auto',
+                wordWrap: 'break-word',
+                overflowWrap: 'break-word',
+                height: '100%',
+              }}
+            >
                   {selectedRecord.forecastSnapshot && selectedRecord.forecastSnapshot.forecasts && selectedRecord.forecastSnapshot.forecasts.length > 0 ? (
                     <>
-                      <h2 className="data-card-title" style={{ marginBottom: '0.5rem' }}>Vízállás adatok</h2>
+                      <h2 className="data-card-title" style={{ 
+                        marginBottom: '1rem', 
+                        marginTop: 0,
+                        fontSize: '1.25rem',
+                        fontWeight: 700,
+                        color: '#1e293b',
+                        borderBottom: '2px solid #e2e8f0',
+                        paddingBottom: '0.75rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem'
+                      }}>
+                        <span style={{ fontSize: 'calc(var(--icon-size-base) * 1.5)' }}>💧</span>
+                        Vízállás adatok
+                      </h2>
                       <div className="data-card-grid">
                         {(() => {
                           if (!selectedRecord.forecastSnapshot?.forecasts?.[0]) return null as React.ReactNode
@@ -3214,6 +3907,165 @@ function App() {
         )}
       </section>
       </main>
+      
+      {/* Halak kiválasztása popup */}
+      {showFishPopup && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '1rem',
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              handleFishPopupCancel()
+            }
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: '#FFFFF7',
+              borderRadius: '0.75rem',
+              padding: '2rem',
+              maxWidth: '500px',
+              width: '100%',
+              boxShadow: '0 10px 25px rgba(0, 0, 0, 0.3)',
+              color: '#0f172a',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2
+              style={{
+                margin: '0 0 1.5rem 0',
+                fontSize: '1.5rem',
+                fontWeight: 600,
+                color: '#0f172a',
+              }}
+            >
+              Mit fogtál?
+            </h2>
+            
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.75rem',
+                marginBottom: '2rem',
+              }}
+            >
+              {fishOptions.map((fish) => (
+                <label
+                  key={fish}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    padding: '0.75rem',
+                    borderRadius: '0.5rem',
+                    backgroundColor: selectedFish.includes(fish) ? '#e0f2fe' : '#f3f4f6',
+                    cursor: 'pointer',
+                    transition: 'background-color 0.2s ease',
+                    border: selectedFish.includes(fish) ? '2px solid #14b8a6' : '2px solid transparent',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!selectedFish.includes(fish)) {
+                      e.currentTarget.style.backgroundColor = '#e5e7eb'
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!selectedFish.includes(fish)) {
+                      e.currentTarget.style.backgroundColor = '#f3f4f6'
+                    }
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedFish.includes(fish)}
+                    onChange={() => toggleFish(fish)}
+                    style={{
+                      width: '1.25rem',
+                      height: '1.25rem',
+                      cursor: 'pointer',
+                      accentColor: '#14b8a6',
+                    }}
+                  />
+                  <span
+                    style={{
+                      fontSize: '1rem',
+                      fontWeight: selectedFish.includes(fish) ? 600 : 400,
+                      textTransform: 'capitalize',
+                      color: '#0f172a',
+                    }}
+                  >
+                    {fish}
+                  </span>
+                </label>
+              ))}
+            </div>
+            
+            <div
+              style={{
+                display: 'flex',
+                gap: '1rem',
+                justifyContent: 'flex-end',
+              }}
+            >
+              <button
+                type="button"
+                onClick={handleFishPopupCancel}
+                style={{
+                  padding: '0.5rem 1.5rem',
+                  borderRadius: '0.5rem',
+                  border: '1px solid #d1d5db',
+                  backgroundColor: '#ffffff',
+                  color: '#374151',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s ease',
+                  fontWeight: 500,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f9fafb'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#ffffff'
+                }}
+              >
+                Mégse
+              </button>
+              <button
+                type="button"
+                onClick={handleFishPopupConfirm}
+                style={{
+                  padding: '0.5rem 1.5rem',
+                  borderRadius: '0.5rem',
+                  border: '1px solid #0d9488',
+                  backgroundColor: '#14b8a6',
+                  color: '#ffffff',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s ease',
+                  fontWeight: 500,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#0d9488'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#14b8a6'
+                }}
+              >
+                Mentés
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }

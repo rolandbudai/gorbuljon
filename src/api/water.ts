@@ -1,7 +1,22 @@
 // Fejlesztésben proxy-t használunk a CORS probléma megkerüléséhez
-const OVSZ_API_URL = import.meta.env.DEV
-  ? '/api/ovszws/api.php'
-  : 'https://hydroinfo.hu/WSCSS/ovszws/api.php'
+// Production-ben Firebase Cloud Function proxy-t használunk
+const OVSZ_API_URL_PROXY = '/api/ovszws/api.php'
+const OVSZ_API_URL_DIRECT = 'https://hydroinfo.hu/WSCSS/ovszws/api.php'
+// Firebase Cloud Function URL - környezeti változóból vagy automatikusan generálva
+const getCloudFunctionUrl = (): string => {
+  const functionsUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL
+  if (functionsUrl) {
+    return functionsUrl
+  }
+  // Ha nincs explicit URL, próbáljuk meg generálni a project ID-ből
+  const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID
+  if (projectId) {
+    // Firebase Functions alapértelmezett region: us-central1
+    return `https://us-central1-${projectId}.cloudfunctions.net/ovszwsProxy`
+  }
+  // Fallback: közvetlen API (CORS probléma lehet)
+  return OVSZ_API_URL_DIRECT
+}
 
 // Típusok definiálása
 export type Variable = {
@@ -88,11 +103,6 @@ export type VariableStation = {
   forecasted: number
 }
 
-type ApiError = {
-  error: number
-  message: string
-}
-
 // Helper függvény az API hívásokhoz
 async function callApi(params: Record<string, string | number | undefined>): Promise<any> {
   const token = import.meta.env.VITE_OVSZ_API_TOKEN
@@ -101,13 +111,21 @@ async function callApi(params: Record<string, string | number | undefined>): Pro
     throw new Error('Az OVSZ API token hiányzik. Add hozzá a VITE_OVSZ_API_TOKEN változót a .env.local fájlhoz.')
   }
 
-  // Fejlesztésben relatív URL-t használunk (proxy), production-ben abszolút URL-t
+  // Futásidőben ellenőrizzük, hogy dev módban vagyunk-e
+  // Dev módban Vite proxy-t használunk, production-ben Firebase Cloud Function-t
+  const isDev = import.meta.env.DEV
+  const isLocalhost = typeof window !== 'undefined' && 
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+  
   let url: URL
-  if (import.meta.env.DEV) {
-    // Relatív URL esetén hozzáadjuk az origin-t
-    url = new URL(OVSZ_API_URL, window.location.origin)
+  if (isDev && isLocalhost) {
+    // Dev módban Vite proxy-t használunk
+    url = new URL(OVSZ_API_URL_PROXY, window.location.origin)
   } else {
-    url = new URL(OVSZ_API_URL)
+    // Production módban Firebase Cloud Function proxy-t használunk
+    // Ez megoldja a CORS problémát statikus hostingon
+    const cloudFunctionUrl = getCloudFunctionUrl()
+    url = new URL(cloudFunctionUrl)
   }
 
   url.searchParams.set('token', token)

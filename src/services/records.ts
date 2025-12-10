@@ -47,13 +47,12 @@ export type LocationRecordData = {
   locationName: string
   locationQuery: string
   coordinates?: Coordinates
-  date?: string // yyyy.mm.dd formátum
-  time?: string // HH:MM formátum
   weatherSnapshot?: WeatherSnapshot
   waterDataSnapshot?: WaterDataSnapshot
   waterTemperatureSnapshot?: WaterTemperatureSnapshot
   forecastSnapshot?: ForecastSnapshot
   pastWaterLevelSnapshot?: PastWaterLevelSnapshot
+  caughtFish?: string[] // Fogott halak listája
 }
 
 export type LocationRecord = LocationRecordData & {
@@ -61,6 +60,8 @@ export type LocationRecord = LocationRecordData & {
   ownerUid: string
   createdAt: number
   updatedAt: number
+  date?: string
+  time?: string
 }
 
 export type LocationRecordPayload = LocationRecordData
@@ -76,8 +77,6 @@ const mapDoc = (uid: string, snapshot: QueryDocumentSnapshot<DocumentData>): Loc
     locationName: data.locationName ?? '',
     locationQuery: data.locationQuery ?? '',
     coordinates: data.coordinates,
-    date: data.date,
-    time: data.time,
     createdAt: data.createdAt ?? Date.now(),
     updatedAt: data.updatedAt ?? Date.now(),
     weatherSnapshot: data.weatherSnapshot,
@@ -85,6 +84,9 @@ const mapDoc = (uid: string, snapshot: QueryDocumentSnapshot<DocumentData>): Loc
     waterTemperatureSnapshot: data.waterTemperatureSnapshot,
     forecastSnapshot: data.forecastSnapshot,
     pastWaterLevelSnapshot: data.pastWaterLevelSnapshot,
+    caughtFish: data.caughtFish,
+    date: data.date,
+    time: data.time,
   }
 }
 
@@ -105,10 +107,14 @@ export const listenToRecords = (
   callback: (records: LocationRecord[]) => void,
   onError?: (error: Error) => void,
 ) => {
-  const q = query(recordsCollection(uid), orderBy('updatedAt', 'desc'))
+  // Próbáljuk meg először az orderBy-os lekérdezést
+  const qWithOrderBy = query(recordsCollection(uid), orderBy('updatedAt', 'desc'))
+  
+  let fallbackUnsubscribe: (() => void) | null = null
+  let isUsingFallback = false
 
   const unsubscribe = onSnapshot(
-    q,
+    qWithOrderBy,
     (snapshot) => {
       const records = snapshot.docs.map((docSnapshot) =>
         mapDoc(uid, docSnapshot as QueryDocumentSnapshot<DocumentData>),
@@ -116,11 +122,42 @@ export const listenToRecords = (
       callback(records)
     },
     (error) => {
-      onError?.(error)
+      // Ha az orderBy lekérdezés hibát dob (pl. hiányzó index), próbáljuk meg az egyszerű lekérdezést
+      if (!isUsingFallback) {
+        console.warn('Az orderBy lekérdezés hibát dobott, fallback megoldást használunk:', error)
+        isUsingFallback = true
+        
+        const qSimple = query(recordsCollection(uid))
+        fallbackUnsubscribe = onSnapshot(
+          qSimple,
+          (snapshot) => {
+            const records = snapshot.docs.map((docSnapshot) =>
+              mapDoc(uid, docSnapshot as QueryDocumentSnapshot<DocumentData>),
+            )
+            // Kliens oldalon rendezzük updatedAt szerint csökkenő sorrendben
+            records.sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))
+            callback(records)
+          },
+          (fallbackError) => {
+            // Ha a fallback lekérdezés is hibát dob, akkor jelzünk hibát
+            console.error('A fallback lekérdezés is hibát dobott:', fallbackError)
+            onError?.(fallbackError as Error)
+          },
+        )
+      } else {
+        // Ha már fallback-et használunk és az is hibát dob, akkor jelzünk hibát
+        onError?.(error)
+      }
     },
   )
 
-  return unsubscribe
+  // Wrapper unsubscribe függvény, ami mindkét subscription-t leiratkoztatja
+  return () => {
+    unsubscribe()
+    if (fallbackUnsubscribe) {
+      fallbackUnsubscribe()
+    }
+  }
 }
 
 export const addRecord = async (uid: string, payload: LocationRecordPayload) => {
