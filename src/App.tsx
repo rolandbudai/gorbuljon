@@ -54,6 +54,7 @@ function App() {
   const [authError, setAuthError] = useState<string | null>(null)
   const [geolocationLoading, setGeolocationLoading] = useState(false)
   const [geolocationError, setGeolocationError] = useState<string | null>(null)
+  const [geolocationNameLoading, setGeolocationNameLoading] = useState(false)
   const isFormDisabled = authLoading || !user
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null)
   const [weatherLoading, setWeatherLoading] = useState(false)
@@ -1219,57 +1220,131 @@ function App() {
       return
     }
 
+    // Guard: don't start if a request is already running
+    if (geolocationLoading || geolocationNameLoading) return
+
     setGeolocationLoading(true)
+    setGeolocationNameLoading(false)
     setGeolocationError(null)
 
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        try {
-          const { latitude, longitude } = position.coords
-          const nearest = await searchNearestLocation(latitude, longitude)
+    const onSuccess = async (position: GeolocationPosition) => {
+      try {
+        const { latitude, longitude, accuracy } = position.coords
+        console.log('📍 Geolocation success', { latitude, longitude, accuracy })
 
-          if (!nearest) {
-            setGeolocationError('Nem található közeli település.')
-            return
-          }
+        // Immediate coarse feedback: set coords and a temporary location query
+        const tempDisplay = 'Helymeghatározás…'
+        setLocation(tempDisplay)
+        setLocationQuery(`${latitude},${longitude}`)
+        setCoordinates({ lat: latitude, lon: longitude })
+        setShowSuggestions(false)
+        setLocationSuggestions([])
 
-          const displayName = [nearest.name, nearest.region].filter(Boolean).join(', ')
-          const queryValue = `${nearest.lat},${nearest.lon}`
-          const coords: Coordinates = { lat: nearest.lat, lon: nearest.lon }
-
-          setLocation(displayName)
-          setLocationQuery(queryValue)
-          setCoordinates(coords)
-          setShowSuggestions(false)
-          setLocationSuggestions([])
-          setSaveMessage('Az aktuális helyzet alapján betöltöttük az adatokat. Mentsd el, ha szeretnéd naplózni.')
-        } catch (error) {
-          setGeolocationError('Nem sikerült feldolgozni a helyadatokat.')
-        } finally {
-          setGeolocationLoading(false)
-        }
-      },
-      (error) => {
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            setGeolocationError('A helyhozzáférés engedélyezése szükséges.')
-            break
-          case error.POSITION_UNAVAILABLE:
-            setGeolocationError('A helyzet nem állapítható meg.')
-            break
-          case error.TIMEOUT:
-            setGeolocationError('A helyadat lekérése túl sok időt vett igénybe.')
-            break
-          default:
-            setGeolocationError('Ismeretlen hiba történt a helymeghatározás során.')
-        }
+        // Mark initial load as done (so UI becomes responsive) and start reverse lookup in background
         setGeolocationLoading(false)
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-      },
-    )
+        setGeolocationNameLoading(true)
+
+        // Perform nearest place lookup in background (don't block initial UI)
+        try {
+          const start = Date.now()
+          const nearest = await searchNearestLocation(latitude, longitude)
+          console.log('⏱ searchNearestLocation duration (ms):', Date.now() - start)
+          if (nearest) {
+            const displayName = [nearest.name, nearest.region].filter(Boolean).join(', ')
+            const queryValue = `${nearest.lat},${nearest.lon}`
+            const coords: Coordinates = { lat: nearest.lat, lon: nearest.lon }
+            setLocation(displayName)
+            setLocationQuery(queryValue)
+            setCoordinates(coords)
+            setSaveMessage('Az aktuális helyzet alapján betöltöttük az adatokat. Mentsd el, ha szeretnéd naplózni.')
+          } else {
+            // No nearest place found — keep coords and query but show a soft warning
+            setGeolocationError('Nem található közeli település (csak koordináták alapján folytatjuk).')
+          }
+        } catch (err) {
+          console.error('❌ searchNearestLocation error', err)
+          setGeolocationError('Nem sikerült a helyadatok lekérése.')
+        } finally {
+          setGeolocationNameLoading(false)
+        }
+
+        // If initial accuracy is poor, try a high-accuracy retry in the background
+        if (accuracy !== undefined && accuracy !== null && accuracy > 2000) {
+          console.log('🔁 Kezdemény újrapróbálkozás magas pontosságért: current accuracy =', accuracy)
+          try {
+            navigator.geolocation.getCurrentPosition(
+              (highPos) => {
+                const { latitude: hLat, longitude: hLon, accuracy: hAcc } = highPos.coords
+                console.log('📍 High-accuracy retry success', { hLat, hLon, hAcc })
+                // If improved, update coords and optionally refresh name lookup
+                if (hAcc && hAcc < accuracy) {
+                  setCoordinates({ lat: hLat, lon: hLon })
+                  setLocationQuery(`${hLat},${hLon}`)
+                  setGeolocationNameLoading(true)
+                  searchNearestLocation(hLat, hLon)
+                    .then((nearest2) => {
+                      if (nearest2) {
+                        const displayName2 = [nearest2.name, nearest2.region].filter(Boolean).join(', ')
+                        const queryValue2 = `${nearest2.lat},${nearest2.lon}`
+                        setLocation(displayName2)
+                        setLocationQuery(queryValue2)
+                        setCoordinates({ lat: nearest2.lat, lon: nearest2.lon })
+                        setSaveMessage('Pontsabb hely adatfrissítés elérhető.')
+                      }
+                    })
+                    .catch((e) => {
+                      console.error('❌ high-accuracy nearest search failed', e)
+                    })
+                    .finally(() => setGeolocationNameLoading(false))
+                }
+              },
+              (highError) => {
+                console.warn('⚠️ High-accuracy geolocation failed or timed out:', highError)
+              },
+              { enableHighAccuracy: true, maximumAge: 0, timeout: 7000 },
+            )
+          } catch (e) {
+            console.warn('⚠️ High-accuracy retry error', e)
+          }
+        }
+      } catch (err) {
+        console.error('❌ Geolocation processing failed', err)
+        setGeolocationError('Nem sikerült feldolgozni a helyadatokat.')
+        setGeolocationLoading(false)
+        setGeolocationNameLoading(false)
+      }
+    }
+
+    const onError = (error: GeolocationPositionError) => {
+      switch (error.code) {
+        case error.PERMISSION_DENIED:
+          setGeolocationError('A helyhozzáférés engedélyezése szükséges.')
+          break
+        case error.POSITION_UNAVAILABLE:
+          setGeolocationError('A helyzet nem állapítható meg.')
+          break
+        case error.TIMEOUT:
+          setGeolocationError('A helyadat lekérése túl sok időt vett igénybe.')
+          break
+        default:
+          setGeolocationError('Ismeretlen hiba történt a helymeghatározás során.')
+      }
+      setGeolocationLoading(false)
+      setGeolocationNameLoading(false)
+    }
+
+    try {
+      navigator.geolocation.getCurrentPosition(onSuccess, onError, {
+        enableHighAccuracy: false,
+        maximumAge: 60000,
+        timeout: 7000,
+      })
+    } catch (err) {
+      console.error('❌ navigator.geolocation.getCurrentPosition threw', err)
+      setGeolocationError('A helymeghatározás nem indítható.')
+      setGeolocationLoading(false)
+      setGeolocationNameLoading(false)
+    }
   }
 
   const getLocationWithoutCounty = (locationName: string): string => {
@@ -1693,6 +1768,9 @@ function App() {
           {geolocationLoading ? 'Helyzet meghatározása…' : 'Adatok lekérése'}
         </button>
         {geolocationError && <span style={{ color: '#dc2626' }}>{geolocationError}</span>}
+        {!geolocationError && geolocationNameLoading && (
+          <span style={{ color: '#64748b' }}>Helynév finomítása…</span>
+        )}
       </div>
 
       <section
@@ -1940,17 +2018,13 @@ function App() {
               }}>
                 {/* Vízállás */}
                 {waterLoading ? (
-                  <div className="data-field" style={{ 
-                    padding: '0.75rem',
-                    borderRadius: '0.75rem',
-                    backgroundColor: '#dbeafe',
-                    border: '1px solid #93c5fd'
-                  }}>
+                  <div className="data-field" 
+                  >
                     <div style={{ fontSize: '0.75rem', color: '#1e40af', fontWeight: 600, marginBottom: '0.25rem', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                       <span style={{ fontSize: 'calc(var(--icon-size-base) * 1)' }}>💧</span>
                       Vízállás
                     </div>
-                    <div className="data-field-label" style={{ color: '#64748b' }}>adatok betöltése…</div>
+                    <div className="data-field-label">adatok betöltése…</div>
                   </div>
                 ) : waterData?.measurements && waterData.measurements.length > 0 ? (
                   <div className="data-field" style={{ 
@@ -1960,15 +2034,15 @@ function App() {
                     border: '1px solid #93c5fd',
                     position: 'relative'
                   }}>
-                    <div className="data-field-label" style={{ color: '#1e40af', fontWeight: 600, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                    <div className="data-field-label" >
                       <span className="data-field-icon">💧</span>
                       Vízállás
                     </div>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
-                      <div className="data-field-value" style={{ fontWeight: 700, color: '#1e40af' }}>
+                      <div className="data-field-value" >
                         {waterData.measurements[waterData.measurements.length - 1].value.toFixed(1)}
                       </div>
-                      <div className="data-field-label" style={{ fontWeight: 500, color: '#1e40af' }}>{waterData.unit || 'cm'}</div>
+                      <div className="data-field-label" >{waterData.unit || 'cm'}</div>
                       <span
                         style={{
                           position: 'relative',
@@ -2042,7 +2116,7 @@ function App() {
                       <span style={{ fontSize: '0.9rem' }}>🌡️</span>
                       Vízhőmérséklet
                     </div>
-                    <div className="data-field-label" style={{ color: '#64748b' }}>adatok betöltése…</div>
+                    <div className="data-field-label" >adatok betöltése…</div>
                   </div>
                 ) : waterTemperatureError ? (
                   <div className="data-field" style={{ 
@@ -2055,7 +2129,7 @@ function App() {
                       <span style={{ fontSize: 'calc(var(--icon-size-base) * 1)' }}>🌡️</span>
                       Vízhőmérséklet
                     </div>
-                    <div className="data-field-label" style={{ color: '#ef4444' }}>⚠️ {waterTemperatureError}</div>
+                    <div className="data-field-label" >⚠️ {waterTemperatureError}</div>
                   </div>
                 ) : waterTemperatureData && waterTemperatureData.measurements && waterTemperatureData.measurements.length > 0 && waterTemperatureData.measurements[waterTemperatureData.measurements.length - 1].value != null ? (
                   <div className="data-field" style={{ 
@@ -2065,15 +2139,15 @@ function App() {
                     border: '1px solid #fde68a',
                     position: 'relative'
                   }}>
-                    <div className="data-field-label" style={{ color: '#d97706', fontWeight: 600, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                    <div className="data-field-label" >
                       <span className="data-field-icon">🌡️</span>
                       Vízhőmérséklet
                     </div>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
-                      <div className="data-field-value" style={{ fontWeight: 700, color: '#d97706' }}>
+                      <div className="data-field-value" >
                         {typeof waterTemperatureData.measurements[waterTemperatureData.measurements.length - 1].value === 'number' ? waterTemperatureData.measurements[waterTemperatureData.measurements.length - 1].value.toFixed(1) : waterTemperatureData.measurements[waterTemperatureData.measurements.length - 1].value}
                       </div>
-                      <div className="data-field-label" style={{ fontWeight: 500, color: '#d97706' }}>{waterTemperatureData.unit || '°C'}</div>
+                      <div className="data-field-label" >{waterTemperatureData.unit || '°C'}</div>
                       <span
                         style={{
                           position: 'relative',
@@ -2173,9 +2247,9 @@ function App() {
                   }}>
                     <span className="data-field-icon-large">🌡️</span>
                     <div style={{ flex: 1 }}>
-                      <div className="data-field-label" style={{ color: '#64748b', fontWeight: 500 }}>LEVEGŐ HŐMÉRSÉKLET</div>
+                      <div className="data-field-label" >LEVEGŐ HŐMÉRSÉKLET</div>
                       <div className="data-field-value" style={{ 
-                        fontWeight: 700, 
+                
                         color: weatherData.airTemperatureC > 20 ? '#d97706' : weatherData.airTemperatureC > 10 ? '#0369a1' : '#4338ca'
                       }}>
                         {weatherData.airTemperatureC.toFixed(1)} °C
@@ -2195,9 +2269,9 @@ function App() {
                   }}>
                     <span className="data-field-icon-large">📊</span>
                     <div style={{ flex: 1 }}>
-                      <div className="data-field-label" style={{ color: '#64748b', fontWeight: 500 }}>LÉGNYOMÁS</div>
+                      <div className="data-field-label" >LÉGNYOMÁS</div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                        <span className="data-field-value" style={{ fontWeight: 700, color: '#475569' }}>
+                        <span className="data-field-value" >
                           {weatherData.pressureHpa.toFixed(0)} hPa
                         </span>
                         <span style={{ 
@@ -2205,11 +2279,11 @@ function App() {
                           borderRadius: '0.375rem',
                           fontSize: '0.75rem',
                           fontWeight: 600,
-                          backgroundColor: weatherData.pressureTrend === 'rising' ? '#dcfce7' : weatherData.pressureTrend === 'falling' ? '#fee2e2' : '#f3f4f6',
-                          color: weatherData.pressureTrend === 'rising' ? '#166534' : weatherData.pressureTrend === 'falling' ? '#991b1b' : '#6b7280',
+                          backgroundColor: weatherData.pressureTrend === 'emelkedő' ? '#dcfce7' : weatherData.pressureTrend === 'csökkenő' ? '#fee2e2' : '#f3f4f6',
+                          color: weatherData.pressureTrend === 'emelkedő' ? '#166534' : weatherData.pressureTrend === 'csökkenő' ? '#991b1b' : '#6b7280',
                           width: 'fit-content'
                         }}>
-                          {weatherData.pressureTrend === 'rising' ? '↑ Emelkedik' : weatherData.pressureTrend === 'falling' ? '↓ Csökken' : '→ Stabil'}
+                          {weatherData.pressureTrend === 'emelkedő' ? '↑ Emelkedik' : weatherData.pressureTrend === 'csökkenő' ? '↓ Csökken' : '→ Stabil'}
                         </span>
                       </div>
                     </div>
@@ -2227,11 +2301,11 @@ function App() {
                     backgroundColor: '#f8fafc',
                     border: '1px solid #e2e8f0'
                   }}>
-                    <div className="data-field-label" style={{ color: '#64748b', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                    <div className="data-field-label" >
                       <span className="data-field-icon">☁️</span>
                       FELHŐZET
                     </div>
-                    <div className="data-field-value" style={{ fontWeight: 700, color: '#1e293b' }}>{weatherData.cloudCoverPercent}%</div>
+                    <div className="data-field-value" >{weatherData.cloudCoverPercent}%</div>
                   </div>
                   <div className="data-field" style={{ 
                     padding: '0.75rem',
@@ -2239,12 +2313,12 @@ function App() {
                     backgroundColor: '#eff6ff',
                     border: '1px solid #bfdbfe'
                   }}>
-                    <div className="data-field-label" style={{ color: '#64748b', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                    <div className="data-field-label" >
                       <span className="data-field-icon">🌧️</span>
                       CSAPADÉK ESÉLY
                     </div>
-                    <div className="data-field-value" style={{ fontWeight: 700, color: '#0369a1' }}>{weatherData.precipitationChancePercent}%</div>
-                    <div className="data-field-label" style={{ color: '#64748b', marginTop: '0.25rem' }}>
+                    <div className="data-field-value" >{weatherData.precipitationChancePercent}%</div>
+                    <div className="data-field-label" >
                       {weatherData.precipitationIntensityMmPerHour.toFixed(1)} mm/h
                     </div>
                   </div>
@@ -2268,7 +2342,7 @@ function App() {
                     <span className="data-field-icon-large">💨</span>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 500, marginBottom: '0.25rem' }}>SZÉL</div>
-                      <div className="data-field-value" style={{ fontWeight: 700, color: '#0369a1' }}>
+                      <div className="data-field-value" >
                         {weatherData.windDirection} {weatherData.windSpeedKph.toFixed(1)} km/h
                       </div>
                     </div>
@@ -2279,11 +2353,11 @@ function App() {
                     backgroundColor: '#f3f4f6',
                     border: '1px solid #e5e7eb'
                   }}>
-                    <div className="data-field-label" style={{ color: '#64748b', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                    <div className="data-field-label" >
                       <span className="data-field-icon">🌙</span>
                       HOLDFÁZIS
                     </div>
-                    <div className="data-field-value" style={{ fontWeight: 600, color: '#1e293b' }}>{weatherData.moonPhase}</div>
+                    <div className="data-field-value" >{weatherData.moonPhase}</div>
                   </div>
                 </div>
                 
@@ -2298,11 +2372,11 @@ function App() {
                     backgroundColor: '#fffbeb',
                     border: '1px solid #fde68a'
                   }}>
-                    <div className="data-field-label" style={{ color: '#64748b', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                    <div className="data-field-label" >
                       <span className="data-field-icon">☀️</span>
                       UV-INDEX
                     </div>
-                    <div className="data-field-value" style={{ fontWeight: 700, color: '#d97706' }}>{weatherData.uvIndex.toFixed(1)}</div>
+                    <div className="data-field-value" >{weatherData.uvIndex.toFixed(1)}</div>
                   </div>
                   <div className="data-field" style={{ 
                     padding: '0.75rem',
@@ -2310,11 +2384,11 @@ function App() {
                     backgroundColor: '#fef3c7',
                     border: '1px solid #fde68a'
                   }}>
-                    <div className="data-field-label" style={{ color: '#64748b', fontWeight: 500 }}>NAP</div>
-                    <div className="data-field-value" style={{ fontWeight: 600, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: 'var(--data-field-value-size)' }}>
+                    <div className="data-field-label" >NAP</div>
+                    <div className="data-field-value" >
                       <span className="data-field-icon">🌅</span> {weatherData.sunrise}
                     </div>
-                    <div className="data-field-value" style={{ fontWeight: 600, color: '#1e293b', marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: 'var(--data-field-value-size)' }}>
+                    <div className="data-field-value" >
                       <span className="data-field-icon">🌇</span> {weatherData.sunset}
                     </div>
                   </div>
@@ -2356,7 +2430,7 @@ function App() {
                     alignItems: 'center',
                     gap: '0.5rem'
                   }}>
-                    <span style={{ fontSize: 'calc(var(--icon-size-base) * 1.5)' }}>💧</span>
+                    <span >💧</span>
                     Vízállás adatok
                   </h2>
                   {forecastLoading ? (
@@ -3228,38 +3302,19 @@ function App() {
                           }}>
                             {/* Vízállás */}
                             {selectedRecord.waterDataSnapshot?.measurements && selectedRecord.waterDataSnapshot.measurements.length > 0 ? (
-                              <div className="data-field" style={{ 
-                                padding: '0.75rem',
-                                borderRadius: '0.75rem',
-                                backgroundColor: '#dbeafe',
-                                border: '1px solid #93c5fd',
-                                position: 'relative'
-                              }}>
-                                <div className="data-field-label" style={{ color: '#1e40af', fontWeight: 600, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                              <div className="data-field" 
+                              >
+                                <div className="data-field-label" >
                                   <span className="data-field-icon">💧</span>
                                   Vízállás
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
-                                  <div className="data-field-value" style={{ fontWeight: 700, color: '#1e40af' }}>
+                                <div >
+                                  <div className="data-field-value" >
                                     {selectedRecord.waterDataSnapshot.measurements[selectedRecord.waterDataSnapshot.measurements.length - 1].value.toFixed(1)}
                                   </div>
-                                  <div className="data-field-label" style={{ fontWeight: 500, color: '#1e40af' }}>{selectedRecord.waterDataSnapshot.unit || 'cm'}</div>
+                                  <div className="data-field-label">{selectedRecord.waterDataSnapshot.unit || 'cm'}</div>
                                   <span
-                                    style={{
-                                      position: 'relative',
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      width: '14px',
-                                      height: '14px',
-                                      borderRadius: '50%',
-                                      backgroundColor: '#94a3b8',
-                                      color: '#ffffff',
-                                      fontSize: '10px',
-                                      fontWeight: 600,
-                                      cursor: 'pointer',
-                                      marginLeft: 'auto',
-                                    }}
+                                 
                                     onMouseEnter={(e) => {
                                       const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
                                       if (tooltip) {
@@ -3307,38 +3362,18 @@ function App() {
                             
                             {/* Vízhőmérséklet */}
                             {selectedRecord.waterTemperatureSnapshot?.measurements && selectedRecord.waterTemperatureSnapshot.measurements.length > 0 && selectedRecord.waterTemperatureSnapshot.measurements[selectedRecord.waterTemperatureSnapshot.measurements.length - 1].value != null ? (
-                              <div className="data-field" style={{ 
-                                padding: '0.75rem',
-                                borderRadius: '0.75rem',
-                                backgroundColor: '#fef3c7',
-                                border: '1px solid #fde68a',
-                                position: 'relative'
-                              }}>
-                                <div className="data-field-label" style={{ color: '#d97706', fontWeight: 600, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                              <div className="data-field">
+                                <div className="data-field-label" >
                                   <span className="data-field-icon">🌡️</span>
                                   Vízhőmérséklet
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
-                                  <div className="data-field-value" style={{ fontWeight: 700, color: '#d97706' }}>
+                                  <div className="data-field-value" >
                                     {typeof selectedRecord.waterTemperatureSnapshot.measurements[selectedRecord.waterTemperatureSnapshot.measurements.length - 1].value === 'number' ? selectedRecord.waterTemperatureSnapshot.measurements[selectedRecord.waterTemperatureSnapshot.measurements.length - 1].value.toFixed(1) : selectedRecord.waterTemperatureSnapshot.measurements[selectedRecord.waterTemperatureSnapshot.measurements.length - 1].value}
                                   </div>
-                                  <div className="data-field-label" style={{ fontWeight: 500, color: '#d97706' }}>{selectedRecord.waterTemperatureSnapshot.unit || '°C'}</div>
+                                  <div className="data-field-label">{selectedRecord.waterTemperatureSnapshot.unit || '°C'}</div>
                                   <span
-                                    style={{
-                                      position: 'relative',
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      width: '14px',
-                                      height: '14px',
-                                      borderRadius: '50%',
-                                      backgroundColor: '#94a3b8',
-                                      color: '#ffffff',
-                                      fontSize: '10px',
-                                      fontWeight: 600,
-                                      cursor: 'pointer',
-                                      marginLeft: 'auto',
-                                    }}
+                               
                                     onMouseEnter={(e) => {
                                       const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
                                       if (tooltip) {
@@ -3414,9 +3449,9 @@ function App() {
                                   }}>
                                     <span className="data-field-icon-large">🌡️</span>
                                     <div style={{ flex: 1 }}>
-                                      <div className="data-field-label" style={{ color: '#64748b', fontWeight: 500 }}>LEVEGŐ HŐMÉRSÉKLET</div>
+                                      <div className="data-field-label" >LEVEGŐ HŐMÉRSÉKLET</div>
                                       <div className="data-field-value" style={{ 
-                                        fontWeight: 700, 
+
                                         color: selectedRecord.weatherSnapshot.airTemperatureC > 20 ? '#d97706' : selectedRecord.weatherSnapshot.airTemperatureC > 10 ? '#0369a1' : '#4338ca'
                                       }}>
                                         {selectedRecord.weatherSnapshot.airTemperatureC.toFixed(1)} °C
@@ -3436,21 +3471,18 @@ function App() {
                                   }}>
                                     <span className="data-field-icon-large">📊</span>
                                     <div style={{ flex: 1 }}>
-                                      <div className="data-field-label" style={{ color: '#64748b', fontWeight: 500 }}>LÉGNYOMÁS</div>
+                                      <div className="data-field-label" >LÉGNYOMÁS</div>
                                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                                        <span className="data-field-value" style={{ fontWeight: 700, color: '#475569' }}>
+                                        <span className="data-field-value" >
                                           {selectedRecord.weatherSnapshot.pressureHpa.toFixed(0)} hPa
                                         </span>
                                         <span style={{ 
-                                          padding: '0.25rem 0.5rem',
-                                          borderRadius: '0.375rem',
-                                          fontSize: '0.75rem',
-                                          fontWeight: 600,
-                                          backgroundColor: selectedRecord.weatherSnapshot.pressureTrend === 'rising' ? '#dcfce7' : selectedRecord.weatherSnapshot.pressureTrend === 'falling' ? '#fee2e2' : '#f3f4f6',
-                                          color: selectedRecord.weatherSnapshot.pressureTrend === 'rising' ? '#166534' : selectedRecord.weatherSnapshot.pressureTrend === 'falling' ? '#991b1b' : '#6b7280',
-                                          width: 'fit-content'
+
+                                          backgroundColor: selectedRecord.weatherSnapshot.pressureTrend === 'emelkedő' ? '#dcfce7' : selectedRecord.weatherSnapshot.pressureTrend === 'csökkenő' ? '#fee2e2' : '#f3f4f6',
+                                          color: selectedRecord.weatherSnapshot.pressureTrend === 'emelkedő' ? '#166534' : selectedRecord.weatherSnapshot.pressureTrend === 'csökkenő' ? '#991b1b' : '#6b7280',
+                               
                                         }}>
-                                          {selectedRecord.weatherSnapshot.pressureTrend === 'rising' ? '↑ Emelkedik' : selectedRecord.weatherSnapshot.pressureTrend === 'falling' ? '↓ Csökken' : '→ Stabil'}
+                                          {selectedRecord.weatherSnapshot.pressureTrend === 'emelkedő' ? '↑ Emelkedik' : selectedRecord.weatherSnapshot.pressureTrend === 'csökkenő' ? '↓ Csökken' : '→ Stabil'}
                                         </span>
                                       </div>
                                     </div>
@@ -3470,11 +3502,11 @@ function App() {
                                     backgroundColor: '#f8fafc',
                                     border: '1px solid #e2e8f0'
                                   }}>
-                                    <div className="data-field-label" style={{ color: '#64748b', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                    <div className="data-field-label" >
                                       <span className="data-field-icon">☁️</span>
                                       FELHŐZET
                                     </div>
-                                    <div className="data-field-value" style={{ fontWeight: 700, color: '#1e293b' }}>{selectedRecord.weatherSnapshot.cloudCoverPercent}%</div>
+                                    <div className="data-field-value" >{selectedRecord.weatherSnapshot.cloudCoverPercent}%</div>
                                   </div>
                                   <div className="data-field" style={{ 
                                     padding: '0.75rem',
@@ -3482,12 +3514,12 @@ function App() {
                                     backgroundColor: '#eff6ff',
                                     border: '1px solid #bfdbfe'
                                   }}>
-                                    <div className="data-field-label" style={{ color: '#64748b', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                    <div className="data-field-label" >
                                       <span className="data-field-icon">🌧️</span>
                                       CSAPADÉK ESÉLY
                                     </div>
-                                    <div className="data-field-value" style={{ fontWeight: 700, color: '#0369a1' }}>{selectedRecord.weatherSnapshot.precipitationChancePercent}%</div>
-                                    <div className="data-field-label" style={{ color: '#64748b', marginTop: '0.25rem' }}>
+                                    <div className="data-field-value" >{selectedRecord.weatherSnapshot.precipitationChancePercent}%</div>
+                                    <div className="data-field-label" >
                                       {selectedRecord.weatherSnapshot.precipitationIntensityMmPerHour.toFixed(1)} mm/h
                                     </div>
                                   </div>
@@ -3510,8 +3542,8 @@ function App() {
                                   }}>
                                     <span className="data-field-icon-large">💨</span>
                                     <div style={{ flex: 1 }}>
-                                      <div className="data-field-label" style={{ color: '#64748b', fontWeight: 500 }}>SZÉL</div>
-                                      <div className="data-field-value" style={{ fontWeight: 700, color: '#0369a1' }}>
+                                      <div className="data-field-label" >SZÉL</div>
+                                      <div className="data-field-value" >
                                         {selectedRecord.weatherSnapshot.windDirection} {selectedRecord.weatherSnapshot.windSpeedKph.toFixed(1)} km/h
                                       </div>
                                     </div>
@@ -3522,11 +3554,11 @@ function App() {
                                     backgroundColor: '#f3f4f6',
                                     border: '1px solid #e5e7eb'
                                   }}>
-                                    <div className="data-field-label" style={{ color: '#64748b', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                    <div className="data-field-label" >
                                       <span className="data-field-icon">🌙</span>
                                       HOLDFÁZIS
                                     </div>
-                                    <div className="data-field-value" style={{ fontWeight: 600, color: '#1e293b' }}>{selectedRecord.weatherSnapshot.moonPhase}</div>
+                                    <div className="data-field-value" >{selectedRecord.weatherSnapshot.moonPhase}</div>
                                   </div>
                                 </div>
                                 
@@ -3542,11 +3574,11 @@ function App() {
                                     backgroundColor: '#fffbeb',
                                     border: '1px solid #fde68a'
                                   }}>
-                                    <div className="data-field-label" style={{ color: '#64748b', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                    <div className="data-field-label">
                                       <span className="data-field-icon">☀️</span>
                                       UV-INDEX
                                     </div>
-                                    <div className="data-field-value" style={{ fontWeight: 700, color: '#d97706' }}>{selectedRecord.weatherSnapshot.uvIndex.toFixed(1)}</div>
+                                    <div className="data-field-value" >{selectedRecord.weatherSnapshot.uvIndex.toFixed(1)}</div>
                                   </div>
                                   <div className="data-field" style={{ 
                                     padding: '0.75rem',
@@ -3554,11 +3586,10 @@ function App() {
                                     backgroundColor: '#fef3c7',
                                     border: '1px solid #fde68a'
                                   }}>
-                                    <div className="data-field-label" style={{ color: '#64748b', fontWeight: 500 }}>NAP</div>
-                                    <div className="data-field-value" style={{ fontWeight: 600, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: 'var(--data-field-value-size)' }}>
+                                    <div className="data-field-label" >
                                       <span className="data-field-icon">🌅</span> {selectedRecord.weatherSnapshot.sunrise}
                                     </div>
-                                    <div className="data-field-value" style={{ fontWeight: 600, color: '#1e293b', marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: 'var(--data-field-value-size)' }}>
+                                    <div className="data-field-value" >
                                       <span className="data-field-icon">🌇</span> {selectedRecord.weatherSnapshot.sunset}
                                     </div>
                                   </div>
