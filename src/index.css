@@ -166,17 +166,44 @@ h1 {
 /* Mobil optimalizálás */
 @media (max-width: 768px) {
   h1 {
-    font-size: 2em;
+    font-size: clamp(3.5rem, 12vw, 5em) !important;
     letter-spacing: 0.02em;
     line-height: 1.2;
+    padding: 2rem 0.5rem 0.5rem 0.5rem !important;
+    margin-bottom: 0.25rem !important;
+    overflow: visible !important;
+    min-height: auto !important;
+  }
+
+  h1 span {
+    font-size: clamp(3.5rem, 12vw, 5em) !important;
+  }
+
+  h4 {
+    font-size: clamp(0.75rem, 3vw, 1rem);
+    margin-top: 0 !important;
   }
 
   .logo-background {
-    max-width: 120px !important;
+    max-width: 150px !important;
+    max-height: 150px !important;
+    width: auto !important;
+    height: auto !important;
   }
 
   .main-container {
     padding: 1rem !important;
+  }
+
+  /* Section padding mobil optimalizálása */
+  section {
+    padding-top: 1rem !important;
+    margin-top: 1rem !important;
+  }
+
+  /* Gombok közötti gap mobil optimalizálása */
+  div[style*="display: flex"][style*="gap"] {
+    gap: 0.5rem !important;
   }
 }
 
@@ -521,8 +548,8 @@ button:focus-visible {
 .folded-corner::after {
   content: '→';
   position: absolute;
-  bottom: 20px;
-  right: 20px;
+  bottom: var(--field-padding);
+  right: var(--field-padding);
   width: 40px;
   height: 40px;
   display: flex;
@@ -717,6 +744,8 @@ button:focus-visible {
     padding: 0;
     margin: 0;
     min-height: auto;
+    height: auto !important;
+    max-height: 85vh !important;
   }
 
   .data-card h2,
@@ -730,45 +759,75 @@ button:focus-visible {
 
   .card-front,
   .card-back {
-    padding: 1rem !important;
+    padding: calc(var(--card-padding) * 0.7) !important;
+    gap: 0.5rem !important;
     box-sizing: border-box;
     overflow-x: hidden !important;
     word-wrap: break-word;
     overflow-wrap: break-word;
     max-width: 100%;
+    position: relative !important;
   }
 
-  /* Data-card fejléc responsive - mobil esetén egymás alatt */
-  /* Data-card fejléc responsive - mobil esetén egymás alatt */
+  /* Csökkentett margin/padding a grafikon feletti tartalomhoz mobilon */
+  .card-back .card-section-title {
+    margin: 0 0 0.25rem !important;
+    padding-bottom: 0.25rem !important;
+    font-size: 0.95rem !important;
+  }
+
+  /* Trend info margin csökkentése mobilon */
+  .card-back > p {
+    margin: 0 0 0.25rem !important;
+    font-size: 0.8rem !important;
+  }
+
+  /* Data-card fejléc responsive - mobil esetén egy sorban */
   .data-card-header {
-    flex-direction: column !important;
-    align-items: flex-start !important;
-    gap: 0.75rem !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
     padding: 0.75rem 1rem !important;
+    flex-wrap: wrap !important;
   }
 
   .data-card-header>div {
-    width: 100% !important;
-  }
-
-  .data-card-header>div:nth-child(2) {
-    min-width: auto !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
   }
 
   .data-card-header h3 {
     font-size: 1.1rem !important;
-    text-align: left !important;
+    text-align: center !important;
+  }
+
+  .card-header-location {
+    flex: 1 1 0 !important;
+    min-width: 120px !important;
+  }
+
+  .card-header-water {
+    flex: 0 1 auto !important;
+    min-width: 100px !important;
+  }
+
+  .card-header-coordinates {
+    flex: 0 1 auto !important;
+    text-align: right !important;
+    font-size: 0.7rem !important;
   }
 
   .data-card-header>div:last-child {
-    text-align: left !important;
+    text-align: right !important;
     align-items: flex-start !important;
   }
 
   .saved-data-card {
     width: 100% !important;
     max-width: 100% !important;
-    min-height: auto !important;
+    height: 79.2vh !important;
+    max-height: 79.2vh !important;
+    margin-top: 1rem !important; /* Padding a list-view és a saved-data-card között */
   }
 
   /* További overflow védelem */
@@ -856,17 +915,35 @@ button:focus-visible {
 .card-front,
 .card-back {
   background: var(--color-bg-card-front);
-  padding: var(--card-padding);
+  padding: calc(var(--card-padding) * 0.7);
   border-radius: var(--card-border-radius);
 
   /* Flex layout from inline styles */
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.75rem;
   height: 100%;
   box-sizing: border-box;
   overflow-x: hidden;
   overflow-y: auto;
+}
+
+/* Csökkentett padding csak a data-card-on (nem a saved-data-card-on) */
+.data-card:not(.saved-data-card) .card-front {
+  padding: calc(var(--card-padding) * 0.7);
+  gap: 0.75rem;
+}
+
+/* Card-back padding egységes mindkét kártyán */
+.data-card .card-back {
+  padding: calc(var(--card-padding) * 0.7) !important;
+  gap: 0.75rem !important;
+}
+
+/* Csökkentett távolság a folded-corner ikontól csak a data-card-on */
+.data-card:not(.saved-data-card).folded-corner::after {
+  bottom: calc(var(--field-padding) * 0.5);
+  right: calc(var(--field-padding) * 0.5);
 }
 
 /* Header */
@@ -880,12 +957,15 @@ button:focus-visible {
   margin-bottom: 0.75rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   display: flex;
+  flex-direction: row;
   justify-content: space-between;
   align-items: center;
   /* Reduced gap */
   gap: 0.5rem;
   flex-wrap: wrap;
 }
+
+
 
 .card-section-title {
   font-size: 1.1rem;
@@ -1070,6 +1150,65 @@ button:focus-visible {
     padding: 1rem;
     max-width: 100%;
   }
+
+  /* Form elemek mobil optimalizálása */
+  input[type="text"] {
+    width: 100% !important;
+    box-sizing: border-box;
+    font-size: 16px !important; /* Prevents zoom on iOS */
+    padding: 0.75rem !important;
+    min-height: 44px; /* Touch-friendly */
+  }
+
+  /* Gombok mobil optimalizálása */
+  button {
+    min-height: 44px; /* Touch-friendly */
+    padding: 0.75rem 1rem !important;
+    font-size: 1rem !important;
+  }
+
+  /* Autocomplete lista mobil optimalizálása */
+  ul[style*="maxHeight"] {
+    max-width: 100% !important;
+    width: 100% !important;
+    box-sizing: border-box;
+  }
+
+  /* Label mobil optimalizálása */
+  label {
+    width: 100% !important;
+  }
+
+  /* Lista nézet mobil optimalizálása */
+  .list-view > div > div {
+    flex-direction: row !important; /* Egy sorban maradjon */
+    align-items: center !important;
+    padding: 0.5rem 0.75rem !important; /* Kisebb padding */
+    gap: 0.5rem !important;
+  }
+
+  .list-view > div > div > div:first-child {
+    flex-direction: row !important; /* Egy sorban maradjon */
+    align-items: center !important;
+    gap: 0.5rem !important; /* Kisebb gap */
+    flex: 1 !important;
+    flex-wrap: wrap !important; /* Ha nem fér el, törjenek */
+  }
+
+  .list-view > div > div > div:first-child > span {
+    min-width: auto !important;
+    display: inline-block !important; /* Inline-block, hogy egy sorban legyen */
+    white-space: nowrap !important; /* Ne törjön a szöveg */
+  }
+
+  .list-view > div > div > button {
+    align-self: flex-end !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+    width: 44px !important;
+    height: 44px !important;
+    font-size: 1.5rem !important;
+  }
 }
 
 /* Typography Overrides */
@@ -1126,6 +1265,18 @@ button:focus-visible {
   font-size: 0.8rem;
 }
 
+.card-header-water {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #0369a1;
+  /* hardcoded for now or use var */
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
 .card-header-location {
   flex: 1;
   display: flex;
@@ -1145,22 +1296,13 @@ button:focus-visible {
   text-align: center;
 }
 
-.card-header-location div {
+.card-header-coordinates {
   font-size: 0.75rem;
   color: var(--color-text-secondary);
   font-weight: 500;
-  text-align: center;
-}
-
-.card-header-water {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #0369a1;
-  /* hardcoded for now or use var */
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
   text-align: right;
+  flex: 0 1 auto;
+  white-space: nowrap;
 }
 
 .card-header-water .water-icon {
@@ -1295,5 +1437,106 @@ button:focus-visible {
 
   .card-header-water-name {
     font-size: 1.1rem !important;
+  }
+
+  /* Water level chart container - desktop fix magasság */
+  .water-level-chart {
+    position: relative;
+    width: 90%;
+    max-width: 90%;
+    height: 373.85px;
+    min-height: 373.85px;
+    padding: 0.5rem;
+    background-color: #ffffff;
+    border-radius: 0.5rem;
+    border: 1px solid #e2e8f0;
+    box-sizing: border-box;
+    margin: 0 auto;
+    overflow: hidden;
+  }
+
+  .water-level-chart svg {
+    max-width: 100% !important;
+    height: 100% !important;
+  }
+
+  /* SVG mobil stílusok - reszponzív skálázás */
+  @media (max-width: 768px) {
+    .water-level-chart svg {
+      width: 100% !important;
+      height: 100% !important;
+      max-width: 100% !important;
+      max-height: 100% !important;
+      display: block;
+      object-fit: contain;
+    }
+  }
+
+  /* Water level chart container - reszponzív mobilon */
+  @media (max-width: 480px) {
+    .water-level-chart {
+      width: 100%;
+      max-width: 100%;
+      height: 30vh;
+      max-height: 30vh;
+      min-height: 150px;
+      padding: 0.25rem;
+      overflow: hidden;
+      margin: 0 auto;
+      position: relative;
+      box-sizing: border-box;
+    }
+  }
+
+  /* Nagyobb mobil eszközök (481px-768px) */
+  @media (min-width: 481px) and (max-width: 768px) {
+    .water-level-chart {
+      width: 100%;
+      max-width: 100%;
+      height: 35vh;
+      max-height: 35vh;
+      min-height: 180px;
+      padding: 0.25rem;
+      overflow: hidden;
+      margin: 0 auto;
+      position: relative;
+      box-sizing: border-box;
+    }
+  }
+
+  /* Data-card diagram mobil optimalizálása */
+  .data-card svg {
+    max-width: 100% !important;
+  }
+
+  /* Data-card grid mobil optimalizálása */
+  .data-card-grid {
+    gap: 0.5rem !important;
+  }
+
+  /* Data-field mobil optimalizálása */
+  .data-field {
+    padding: 0.5rem !important;
+    font-size: 0.8rem !important;
+  }
+
+  /* Section padding mobil optimalizálása */
+  section {
+    padding-top: 1rem !important;
+    margin-top: 1rem !important;
+  }
+
+  /* Gombok közötti gap mobil optimalizálása */
+  div[style*="display: flex"][style*="gap"] {
+    gap: 0.5rem !important;
+  }
+
+  /* Font méretek reszponzív beállítása */
+  p {
+    font-size: clamp(0.875rem, 2.5vw, 1rem) !important;
+  }
+
+  span {
+    font-size: clamp(0.75rem, 2vw, 0.875rem) !important;
   }
 }

@@ -52,7 +52,7 @@ export type LocationRecordData = {
   waterTemperatureSnapshot?: WaterTemperatureSnapshot
   forecastSnapshot?: ForecastSnapshot
   pastWaterLevelSnapshot?: PastWaterLevelSnapshot
-  caughtFish?: string[] // Fogott halak listája
+  caughtFish?: string[] | Record<string, number> // Fogott halak listája vagy mennyiségekkel
 }
 
 export type LocationRecord = LocationRecordData & {
