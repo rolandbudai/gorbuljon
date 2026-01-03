@@ -25,18 +25,85 @@
   --color-text-primary: #0f172a;
   --color-text-secondary: #64748b;
   --color-text-accent: #1e293b;
+  
+  /* Text colors for data-field variants based on background brightness */
+  --color-text-on-light: #000000; /* Fekete szöveg világos háttérre */
+  --color-text-on-dark: #FFFFFF; /* Fehér szöveg sötét háttérre */
 
   /* Header Tokens */
   --color-bg-card-header: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
   --color-border-card-header: #93c5fd;
 
-  /* Water Variant Tokens */
+  /* Water Variant Tokens - 7 fokozatú rendszer */
+  --color-bg-variant-water--3: #020617; /* Extrém alacsony */
+  --color-border-variant-water--3: #020617;
+  --color-text-variant-water--3: #FFFFFF;
+  
+  --color-bg-variant-water--2: #0F172A; /* Alacsony */
+  --color-border-variant-water--2: #020617;
+  --color-text-variant-water--2: #FFFFFF;
+  
+  --color-bg-variant-water--1: #1E3A8A; /* Kissé alacsony */
+  --color-border-variant-water--1: #1E293B;
+  --color-text-variant-water--1: #FFFFFF;
+  
+  --color-bg-variant-water-0: #2563EB; /* Normál */
+  --color-border-variant-water-0: #1E40AF;
+  --color-text-variant-water-0: #FFFFFF;
+  
+  --color-bg-variant-water-1: #60A5FA; /* Kissé magas */
+  --color-border-variant-water-1: #3B82F6;
+  --color-text-variant-water-1: #1E40AF;
+  
+  --color-bg-variant-water-2: #38BDF8; /* Magas */
+  --color-border-variant-water-2: #0284C7;
+  --color-text-variant-water-2: #0284C7;
+  
+  --color-bg-variant-water-3: #0284C7; /* Extrém magas */
+  --color-border-variant-water-3: #0369A1;
+  --color-text-variant-water-3: #FFFFFF;
+  
+  /* Régi változók (kompatibilitás) */
   --color-bg-variant-water: #dbeafe;
   --color-border-variant-water: #93c5fd;
   --color-icon-variant-water: #2563eb;
-  /* default icon color if needed */
+  
+  --color-bg-variant-water-low: #e0f2fe;
+  --color-border-variant-water-low: #bae6fd;
+  
+  --color-bg-variant-water-high: #bfdbfe;
+  --color-border-variant-water-high: #93c5fd;
 
-  /* Temperature Variant Tokens */
+  /* Temperature Variant Tokens - 7 fokozatú rendszer */
+  --color-bg-variant-temp--3: #020617; /* Extrém hideg */
+  --color-border-variant-temp--3: #020617;
+  --color-text-variant-temp--3: #FFFFFF;
+  
+  --color-bg-variant-temp--2: #1E3A8A; /* Hideg */
+  --color-border-variant-temp--2: #1E293B;
+  --color-text-variant-temp--2: #FFFFFF;
+  
+  --color-bg-variant-temp--1: #60A5FA; /* Hűvös */
+  --color-border-variant-temp--1: #3B82F6;
+  --color-text-variant-temp--1: #1E40AF;
+  
+  --color-bg-variant-temp-0: #FACC15; /* Mérsékelt */
+  --color-border-variant-temp-0: #F59E0B;
+  --color-text-variant-temp-0: #78350F;
+  
+  --color-bg-variant-temp-1: #FDBA74; /* Meleg */
+  --color-border-variant-temp-1: #FB923C;
+  --color-text-variant-temp-1: #7C2D12;
+  
+  --color-bg-variant-temp-2: #F97316; /* Nagyon meleg */
+  --color-border-variant-temp-2: #EA580C;
+  --color-text-variant-temp-2: #FFFFFF;
+  
+  --color-bg-variant-temp-3: #DC2626; /* Extrém meleg */
+  --color-border-variant-temp-3: #B91C1C;
+  --color-text-variant-temp-3: #FFFFFF;
+  
+  /* Régi változók (kompatibilitás) */
   --color-bg-variant-temp-warm: #fef3c7;
   --color-border-variant-temp-warm: #fde68a;
   --color-text-variant-temp-warm: #d97706;
@@ -48,8 +115,40 @@
   --color-bg-variant-temp-error: #fee2e2;
   --color-border-variant-temp-error: #fca5a5;
   --color-text-variant-temp-error: #991b1b;
+  
+  --color-bg-variant-temp-hot: #fed7aa;
+  --color-border-variant-temp-hot: #fdba74;
 
-  /* Weather Air Temp Variants */
+  /* Weather Air Temp Variants - 7 fokozatú rendszer */
+  --color-bg-weather--3: #020617; /* Extrém hideg */
+  --color-border-weather--3: #020617;
+  --color-text-weather--3: #FFFFFF;
+  
+  --color-bg-weather--2: #0F172A; /* Hideg */
+  --color-border-weather--2: #020617;
+  --color-text-weather--2: #FFFFFF;
+  
+  --color-bg-weather--1: #1E40AF; /* Hűvös */
+  --color-border-weather--1: #1E293B;
+  --color-text-weather--1: #FFFFFF;
+  
+  --color-bg-weather-0: #3B82F6; /* Mérsékelt */
+  --color-border-weather-0: #2563EB;
+  --color-text-weather-0: #FFFFFF;
+  
+  --color-bg-weather-1: #60A5FA; /* Meleg */
+  --color-border-weather-1: #3B82F6;
+  --color-text-weather-1: #1E40AF;
+  
+  --color-bg-weather-2: #FB923C; /* Nagyon meleg */
+  --color-border-weather-2: #F97316;
+  --color-text-weather-2: #7C2D12;
+  
+  --color-bg-weather-3: #DC2626; /* Extrém meleg */
+  --color-border-weather-3: #B91C1C;
+  --color-text-weather-3: #FFFFFF;
+  
+  /* Régi változók (kompatibilitás) */
   --color-bg-weather-hot: #fef3c7;
   /* > 20C */
   --color-border-weather-hot: #fde68a;
@@ -65,9 +164,44 @@
   --color-border-weather-cold: #c7d2fe;
   --color-text-weather-cold: #4338ca;
 
-  /* Pressure Variants */
+  /* Pressure Variants - 7 fokozatú rendszer */
+  --color-bg-pressure--3: #7F1D1D; /* Extrém alacsony */
+  --color-border-pressure--3: #450A0A;
+  --color-text-pressure--3: #FFFFFF;
+  
+  --color-bg-pressure--2: #DC2626; /* Alacsony */
+  --color-border-pressure--2: #991B1B;
+  --color-text-pressure--2: #FFFFFF;
+  
+  --color-bg-pressure--1: #F97316; /* Kissé alacsony */
+  --color-border-pressure--1: #EA580C;
+  --color-text-pressure--1: #7C2D12;
+  
+  --color-bg-pressure-0: #9CA3AF; /* Normál */
+  --color-border-pressure-0: #6B7280;
+  --color-text-pressure-0: #1E293B;
+  
+  --color-bg-pressure-1: #E5E7EB; /* Kissé magas */
+  --color-border-pressure-1: #D1D5DB;
+  --color-text-pressure-1: #1E293B;
+  
+  --color-bg-pressure-2: #CBD5E1; /* Magas */
+  --color-border-pressure-2: #94A3B8;
+  --color-text-pressure-2: #1E293B;
+  
+  --color-bg-pressure-3: #F8FAFC; /* Extrém magas */
+  --color-border-pressure-3: #E5E7EB;
+  --color-text-pressure-3: #1E293B;
+  
+  /* Régi változók (kompatibilitás) */
   --color-bg-pressure: #f1f5f9;
   --color-border-pressure: #e2e8f0;
+  
+  --color-bg-pressure-low: #fef3c7;
+  --color-border-pressure-low: #fde68a;
+  
+  --color-bg-pressure-high: #dbeafe;
+  --color-border-pressure-high: #93c5fd;
 
   /* Pressure Trend Variants (Badge) */
   --color-bg-trend-up: #dcfce7;
@@ -77,24 +211,199 @@
   --color-bg-trend-stable: #f3f4f6;
   --color-text-trend-stable: #6b7280;
 
-  /* Cloud / Rain Variants */
+  /* Cloud / Rain Variants - 7 fokozatú rendszer */
+  --color-bg-cloud--3: #FFFFFF; /* Teljesen derült */
+  --color-border-cloud--3: #E5E7EB;
+  --color-text-cloud--3: #1E293B;
+  
+  --color-bg-cloud--2: #F1F5F9; /* Gyengén felhős */
+  --color-border-cloud--2: #CBD5E1;
+  --color-text-cloud--2: #1E293B;
+  
+  --color-bg-cloud--1: #E5E7EB; /* Közepesen felhős */
+  --color-border-cloud--1: #CBD5E1;
+  --color-text-cloud--1: #1E293B;
+  
+  --color-bg-cloud-0: #9CA3AF; /* Változó */
+  --color-border-cloud-0: #6B7280;
+  --color-text-cloud-0: #1E293B;
+  
+  --color-bg-cloud-1: #94A3B8; /* Erősen felhős */
+  --color-border-cloud-1: #64748B;
+  --color-text-cloud-1: #FFFFFF;
+  
+  --color-bg-cloud-2: #64748B; /* Borult */
+  --color-border-cloud-2: #475569;
+  --color-text-cloud-2: #FFFFFF;
+  
+  --color-bg-cloud-3: #334155; /* Teljesen borult */
+  --color-border-cloud-3: #1E293B;
+  --color-text-cloud-3: #FFFFFF;
+  
+  /* Régi változók (kompatibilitás) */
   --color-bg-cloud: #f8fafc;
   --color-border-cloud: #e2e8f0;
+  
+  --color-bg-cloud-clear: #f0fdf4;
+  --color-border-cloud-clear: #bbf7d0;
+  
+  --color-bg-cloud-partial: #f1f5f9;
+  --color-border-cloud-partial: #cbd5e1;
 
+  /* Rain variants - 7 fokozatú rendszer */
+  --color-bg-rain--3: #FFFFFF; /* Nincs */
+  --color-border-rain--3: #E5E7EB;
+  --color-text-rain--3: #1E3A8A;
+  
+  --color-bg-rain--2: #EFF6FF; /* Nagyon kicsi esély */
+  --color-border-rain--2: #DBEAFE;
+  --color-text-rain--2: #1E3A8A;
+  
+  --color-bg-rain--1: #DBEAFE; /* Kicsi esély */
+  --color-border-rain--1: #BFDBFE;
+  --color-text-rain--1: #1E3A8A;
+  
+  --color-bg-rain-0: #93C5FD; /* Közepes esély */
+  --color-border-rain-0: #60A5FA;
+  --color-text-rain-0: #1E40AF;
+  
+  --color-bg-rain-1: #60A5FA; /* Valószínű */
+  --color-border-rain-1: #3B82F6;
+  --color-text-rain-1: #1E40AF;
+  
+  --color-bg-rain-2: #2563EB; /* Nagyon valószínű */
+  --color-border-rain-2: #1E40AF;
+  --color-text-rain-2: #FFFFFF;
+  
+  --color-bg-rain-3: #1E3A8A; /* Szinte biztos */
+  --color-border-rain-3: #020617;
+  --color-text-rain-3: #FFFFFF;
+  
+  /* Régi változók (kompatibilitás) */
   --color-bg-rain: #eff6ff;
   --color-border-rain: #bfdbfe;
+  
+  --color-bg-rain-low: #f0f9ff;
+  --color-border-rain-low: #bae6fd;
+  
+  --color-bg-rain-high: #dbeafe;
+  --color-border-rain-high: #93c5fd;
 
-  /* Wind / Moon Variants */
+  /* Wind / Moon Variants - 7 fokozatú rendszer */
+  --color-bg-wind--3: #EFF6FF; /* Szélcsend */
+  --color-border-wind--3: #DBEAFE;
+  --color-text-wind--3: #1E3A8A;
+  
+  --color-bg-wind--2: #DBEAFE; /* Gyenge */
+  --color-border-wind--2: #BFDBFE;
+  --color-text-wind--2: #1E3A8A;
+  
+  --color-bg-wind--1: #93C5FD; /* Mérsékelt */
+  --color-border-wind--1: #60A5FA;
+  --color-text-wind--1: #1E40AF;
+  
+  --color-bg-wind-0: #60A5FA; /* Élénk */
+  --color-border-wind-0: #3B82F6;
+  --color-text-wind-0: #1E40AF;
+  
+  --color-bg-wind-1: #2563EB; /* Erős */
+  --color-border-wind-1: #1E40AF;
+  --color-text-wind-1: #FFFFFF;
+  
+  --color-bg-wind-2: #1E3A8A; /* Viharos */
+  --color-border-wind-2: #020617;
+  --color-text-wind-2: #FFFFFF;
+  
+  --color-bg-wind-3: #020617; /* Erős vihar */
+  --color-border-wind-3: #020617;
+  --color-text-wind-3: #FFFFFF;
+  
+  /* Régi változók (kompatibilitás) */
   --color-bg-wind: #f0f9ff;
   --color-border-wind: #bae6fd;
+  
+  --color-bg-wind-light: #f0fdf4;
+  --color-border-wind-light: #bbf7d0;
+  
+  --color-bg-wind-strong: #fef3c7;
+  --color-border-wind-strong: #fde68a;
 
+  /* Moon / Moon Phase variants - 7 fokozatú rendszer (-3-tól +3-ig) */
+  --color-bg-moon--3: #FEFCE8; /* Újhold */
+  --color-border-moon--3: #FDE047;
+  --color-text-moon--3: #78350F;
+  
+  --color-bg-moon--2: #FEF08A; /* Növő sarló */
+  --color-border-moon--2: #FACC15;
+  --color-text-moon--2: #78350F;
+  
+  --color-bg-moon--1: #FDE047; /* Első negyed */
+  --color-border-moon--1: #FBBF24;
+  --color-text-moon--1: #78350F;
+  
+  --color-bg-moon-0: #FACC15; /* Telihold */
+  --color-border-moon-0: #F59E0B;
+  --color-text-moon-0: #78350F;
+  
+  --color-bg-moon-1: #FDE68A; /* Fogyó */
+  --color-border-moon-1: #FACC15;
+  --color-text-moon-1: #78350F;
+  
+  --color-bg-moon-2: #FEF3C7; /* Halvány */
+  --color-border-moon-2: #FDE047;
+  --color-text-moon-2: #78350F;
+  
+  --color-bg-moon-3: #FFFBEB; /* Éjszakai */
+  --color-border-moon-3: #FEF08A;
+  --color-text-moon-3: #78350F;
+  
+  /* Régi változók (kompatibilitás) */
   --color-bg-moon: #f3f4f6;
   --color-border-moon: #e5e7eb;
 
-  /* UV / Sun Variants */
+  /* UV / Sun Variants - 7 fokozatú rendszer */
+  --color-bg-uv--3: #FFFBEB; /* Minimális */
+  --color-border-uv--3: #FEF3C7;
+  --color-text-uv--3: #78350F;
+  
+  --color-bg-uv--2: #FEF3C7; /* Alacsony */
+  --color-border-uv--2: #FDE68A;
+  --color-text-uv--2: #78350F;
+  
+  --color-bg-uv--1: #FDE047; /* Mérsékelt */
+  --color-border-uv--1: #FACC15;
+  --color-text-uv--1: #78350F;
+  
+  --color-bg-uv-0: #FACC15; /* Közepes */
+  --color-border-uv-0: #F59E0B;
+  --color-text-uv-0: #78350F;
+  
+  --color-bg-uv-1: #FB923C; /* Erős */
+  --color-border-uv-1: #F97316;
+  --color-text-uv-1: #7C2D12;
+  
+  --color-bg-uv-2: #F97316; /* Nagyon erős */
+  --color-border-uv-2: #EA580C;
+  --color-text-uv-2: #FFFFFF;
+  
+  --color-bg-uv-3: #DC2626; /* Extrém */
+  --color-border-uv-3: #B91C1C;
+  --color-text-uv-3: #FFFFFF;
+  
+  /* Régi változók (kompatibilitás) */
   --color-bg-uv: #fffbeb;
   --color-border-uv: #fde68a;
 
+  /* Sun / Light Change variants - 2 fokozatú rendszer */
+  --color-bg-sun-0: #9CA3AF; /* Nincs váltás */
+  --color-border-sun-0: #6B7280;
+  --color-text-sun-0: #1E293B;
+  
+  --color-bg-sun-1: #FACC15; /* Fényváltás */
+  --color-border-sun-1: #F59E0B;
+  --color-text-sun-1: #78350F;
+  
+  /* Régi változók (kompatibilitás) */
   --color-bg-sun: #fef3c7;
   --color-border-sun: #fde68a;
 
@@ -115,12 +424,22 @@ a:hover {
   color: #535bf2;
 }
 
+html {
+  width: 100%;
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%; /* Safari kompatibilitás - megakadályozza a szöveg automatikus nagyítását */
+  -moz-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 body {
   margin: 0;
   display: flex;
   place-items: center;
   min-width: 320px;
   min-height: 100vh;
+  width: 100%;
   background: linear-gradient(180deg, #55a1bf 0%, #468091 25%, #377382 50%, #215a64 75%, #09353a 100%);
   background-attachment: fixed;
   position: relative;
@@ -130,6 +449,11 @@ body {
   /* Firefox */
   -ms-overflow-style: none;
   /* IE and Edge */
+  -webkit-text-size-adjust: 100%; /* Safari kompatibilitás - megakadályozza a szöveg automatikus nagyítását */
+  -moz-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  touch-action: manipulation; /* Megakadályozza a dupla kattintásos zoomot iOS-en */
 }
 
 /* Hide scrollbar for Chrome, Safari and Opera */
@@ -161,6 +485,13 @@ h1 {
   word-wrap: break-word;
   overflow-wrap: break-word;
   text-align: center;
+}
+
+/* Tablet nézet */
+@media (max-width: 1024px) {
+  .main-container {
+    padding: clamp(1rem, 3vw, 1.5rem);
+  }
 }
 
 /* Mobil optimalizálás */
@@ -210,13 +541,15 @@ h1 {
 button {
   border-radius: 8px;
   border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
+  padding: clamp(0.5rem, 1.5vw, 0.6em) clamp(1rem, 2.5vw, 1.2em); /* Reszponzív padding */
+  font-size: clamp(0.875rem, 2.2vw, 1em); /* Reszponzív font-size */
   font-weight: 500;
   font-family: inherit;
   background-color: #1a1a1a;
   cursor: pointer;
   transition: border-color 0.25s;
+  min-height: 44px; /* Touch-friendly minimum magasság */
+  min-width: 44px; /* Touch-friendly minimum szélesség */
 }
 
 button:hover {
@@ -628,7 +961,7 @@ button:focus-visible {
   display: flex;
   flex-direction: row;
   min-height: 0;
-  height: 100%;
+  height: auto; /* Auto magasság - igazodik a tartalomhoz */
   box-sizing: border-box;
   justify-content: flex-start;
   overflow: hidden;
@@ -647,7 +980,7 @@ button:focus-visible {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: var(--color-text-secondary);
+  color: inherit; /* Örökli a parent data-field színét */
   font-weight: 500;
 }
 
@@ -674,11 +1007,11 @@ button:focus-visible {
 .grid {
   display: grid;
   grid-auto-rows: 1fr;
-  gap: 0.75rem;
+  gap: clamp(0.5rem, 1.5vw, 0.75rem); /* Reszponzív gap */
 }
 
 .grid .data-field {
-  height: 100%;
+  height: auto; /* Auto magasság - igazodik a tartalomhoz */
 }
 
 /* Flex container ahol data-field-ek vannak */
@@ -687,7 +1020,7 @@ button:focus-visible {
   flex-direction: column;
   flex: 1;
   min-height: 0;
-  gap: 0.75rem;
+  gap: clamp(0.5rem, 1.5vw, 0.75rem); /* Reszponzív gap */
 }
 
 .flex-col .grid {
@@ -713,7 +1046,7 @@ button:focus-visible {
   /* Modern background with subtle gradient */
   background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
   border-radius: 1rem;
-  overflow-y: auto;
+  overflow-y: visible; /* Nincs scroll - a magasság igazodik a tartalomhoz */
   overflow-x: hidden;
 }
 
@@ -743,51 +1076,54 @@ button:focus-visible {
     font-size: 0.85rem;
     padding: 0;
     margin: 0;
-    min-height: auto;
+    min-height: 80vh !important;
     height: auto !important;
-    max-height: 85vh !important;
+    max-height: 95vh !important;
   }
 
   .data-card h2,
   .data-card h3 {
-    font-size: 0.95rem;
+    font-size: clamp(0.85rem, 2.2vw, 0.95rem); /* Reszponzív font-size */
   }
 
   .data-card p {
-    font-size: 0.85rem;
+    font-size: clamp(0.75rem, 2vw, 0.85rem); /* Reszponzív font-size */
   }
 
   .card-front,
   .card-back {
-    padding: calc(var(--card-padding) * 0.7) !important;
-    gap: 0.5rem !important;
+    padding: clamp(0.5rem, 1.5vw, calc(var(--card-padding) * 0.7)) !important; /* Reszponzív padding */
+    gap: clamp(0.25rem, 1vw, 0.5rem) !important; /* Reszponzív gap */
     box-sizing: border-box;
     overflow-x: hidden !important;
+    overflow-y: visible !important; /* Nincs scroll - a magasság igazodik a tartalomhoz */
     word-wrap: break-word;
     overflow-wrap: break-word;
     max-width: 100%;
-    position: relative !important;
+    position: absolute !important;
+    display: flex !important;
+    flex-direction: column !important;
   }
 
   /* Csökkentett margin/padding a grafikon feletti tartalomhoz mobilon */
   .card-back .card-section-title {
-    margin: 0 0 0.25rem !important;
-    padding-bottom: 0.25rem !important;
-    font-size: 0.95rem !important;
+    margin: 0 0 clamp(0.15rem, 0.8vw, 0.25rem) !important; /* Reszponzív margin */
+    padding-bottom: clamp(0.15rem, 0.8vw, 0.25rem) !important; /* Reszponzív padding */
+    font-size: clamp(0.85rem, 2.2vw, 0.95rem) !important; /* Reszponzív font-size */
   }
 
   /* Trend info margin csökkentése mobilon */
-  .card-back > p {
-    margin: 0 0 0.25rem !important;
-    font-size: 0.8rem !important;
+  .card-back>p {
+    margin: 0 0 clamp(0.15rem, 0.8vw, 0.25rem) !important; /* Reszponzív margin */
+    font-size: clamp(0.7rem, 1.8vw, 0.8rem) !important; /* Reszponzív font-size */
   }
 
   /* Data-card fejléc responsive - mobil esetén egy sorban */
   .data-card-header {
     flex-direction: row !important;
     align-items: center !important;
-    gap: 0.5rem !important;
-    padding: 0.75rem 1rem !important;
+    gap: clamp(0.25rem, 1vw, 0.5rem) !important; /* Reszponzív gap */
+    padding: clamp(0.5rem, 2vw, 0.75rem) clamp(0.75rem, 2.5vw, 1rem) !important; /* Reszponzív padding */
     flex-wrap: wrap !important;
   }
 
@@ -797,24 +1133,24 @@ button:focus-visible {
   }
 
   .data-card-header h3 {
-    font-size: 1.1rem !important;
+    font-size: clamp(0.9rem, 2.5vw, 1.1rem) !important; /* Reszponzív font-size */
     text-align: center !important;
   }
 
   .card-header-location {
     flex: 1 1 0 !important;
-    min-width: 120px !important;
+    min-width: 0 !important; /* Reszponzív - nincs fix minimum szélesség */
   }
 
   .card-header-water {
     flex: 0 1 auto !important;
-    min-width: 100px !important;
+    min-width: 0 !important; /* Reszponzív - nincs fix minimum szélesség */
   }
 
   .card-header-coordinates {
     flex: 0 1 auto !important;
     text-align: right !important;
-    font-size: 0.7rem !important;
+    font-size: clamp(0.6rem, 1.8vw, 0.7rem) !important; /* Reszponzív font-size */
   }
 
   .data-card-header>div:last-child {
@@ -825,9 +1161,9 @@ button:focus-visible {
   .saved-data-card {
     width: 100% !important;
     max-width: 100% !important;
-    height: 79.2vh !important;
-    max-height: 79.2vh !important;
-    margin-top: 1rem !important; /* Padding a list-view és a saved-data-card között */
+    margin-top: 1rem !important;
+    /* Padding a list-view és a saved-data-card között */
+    /* Magasság dinamikusan beállítva a grafikon mérete alapján */
   }
 
   /* További overflow védelem */
@@ -843,6 +1179,8 @@ button:focus-visible {
   section {
     overflow-x: hidden;
     max-width: 100%;
+    margin-top: clamp(0.75rem, 2vw, 1rem) !important;
+    padding-top: clamp(0.75rem, 2vw, 1rem) !important;
   }
 }
 
@@ -909,7 +1247,7 @@ button:focus-visible {
 .data-card .card-section-title,
 .data-card .card-header-location h3,
 .data-card .card-header-water-name {
-  font-size: 0.9rem !important;
+  font-size: clamp(0.8rem, 2.2vw, 0.9rem) !important; /* Reszponzív font-size */
 }
 
 .card-front,
@@ -921,7 +1259,7 @@ button:focus-visible {
   /* Flex layout from inline styles */
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: clamp(0.5rem, 1.5vw, 0.75rem); /* Reszponzív gap */
   height: 100%;
   box-sizing: border-box;
   overflow-x: hidden;
@@ -930,14 +1268,14 @@ button:focus-visible {
 
 /* Csökkentett padding csak a data-card-on (nem a saved-data-card-on) */
 .data-card:not(.saved-data-card) .card-front {
-  padding: calc(var(--card-padding) * 0.7);
-  gap: 0.75rem;
+  padding: clamp(0.75rem, 2vw, calc(var(--card-padding) * 0.7)); /* Reszponzív padding */
+  gap: clamp(0.5rem, 1.5vw, 0.75rem); /* Reszponzív gap */
 }
 
 /* Card-back padding egységes mindkét kártyán */
 .data-card .card-back {
-  padding: calc(var(--card-padding) * 0.7) !important;
-  gap: 0.75rem !important;
+  padding: clamp(0.75rem, 2vw, calc(var(--card-padding) * 0.7)) !important; /* Reszponzív padding */
+  gap: clamp(0.5rem, 1.5vw, 0.75rem) !important; /* Reszponzív gap */
 }
 
 /* Csökkentett távolság a folded-corner ikontól csak a data-card-on */
@@ -951,32 +1289,32 @@ button:focus-visible {
   background: var(--color-bg-card-header);
   border: 2px solid var(--color-border-card-header);
   border-radius: var(--field-border-radius);
-  /* Reduced padding for compactness */
-  padding: 0.75rem 1rem;
-  /* Reduced bottom margin */
-  margin-bottom: 0.75rem;
+  /* Reszponzív padding */
+  padding: clamp(0.5rem, 2vw, 0.75rem) clamp(0.75rem, 2.5vw, 1rem);
+  /* Reszponzív bottom margin */
+  margin-bottom: clamp(0.5rem, 1.5vw, 0.75rem);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
-  /* Reduced gap */
-  gap: 0.5rem;
+  /* Reszponzív gap */
+  gap: clamp(0.25rem, 1vw, 0.5rem);
   flex-wrap: wrap;
 }
 
 
 
 .card-section-title {
-  font-size: 1.1rem;
+  font-size: clamp(0.9rem, 2.5vw, 1.1rem); /* Reszponzív font-size */
   font-weight: 700;
   color: var(--color-text-accent);
-  margin: 0 0 0.5rem;
-  padding-bottom: 0.5rem;
+  margin: 0 0 clamp(0.25rem, 1vw, 0.5rem); /* Reszponzív margin */
+  padding-bottom: clamp(0.25rem, 1vw, 0.5rem); /* Reszponzív padding */
   border-bottom: 2px solid #e2e8f0;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: clamp(0.25rem, 1vw, 0.5rem); /* Reszponzív gap */
 }
 
 /* Data Field Base */
@@ -990,12 +1328,12 @@ button:focus-visible {
   display: flex;
   flex-direction: row;
   min-height: 0;
-  height: 100%;
+  height: auto; /* Auto magasság - igazodik a tartalomhoz */
   box-sizing: border-box;
   justify-content: space-between;
   gap: 0.5rem;
   overflow: hidden;
-  font-size: clamp(0.7rem, 1.1vh, 0.9rem);
+  font-size: clamp(0.7rem, 2vw, 0.9rem); /* vw helyett vh mobilbarátabb */
   line-height: 1.2;
 }
 
@@ -1025,6 +1363,50 @@ button:focus-visible {
   border-color: var(--color-border-variant-temp-warm);
 }
 
+/* Weather Air Temp variants - 7 fokozatú rendszer */
+.data-field.variant-weather--3 {
+  background-color: var(--color-bg-weather--3);
+  border-color: var(--color-border-weather--3);
+  color: var(--color-text-on-dark);
+}
+
+.data-field.variant-weather--2 {
+  background-color: var(--color-bg-weather--2);
+  border-color: var(--color-border-weather--2);
+  color: var(--color-text-on-dark);
+}
+
+.data-field.variant-weather--1 {
+  background-color: var(--color-bg-weather--1);
+  border-color: var(--color-border-weather--1);
+  color: var(--color-text-on-dark);
+}
+
+.data-field.variant-weather-0 {
+  background-color: var(--color-bg-weather-0);
+  border-color: var(--color-border-weather-0);
+  color: var(--color-text-on-dark);
+}
+
+.data-field.variant-weather-1 {
+  background-color: var(--color-bg-weather-1);
+  border-color: var(--color-border-weather-1);
+  color: var(--color-text-on-light);
+}
+
+.data-field.variant-weather-2 {
+  background-color: var(--color-bg-weather-2);
+  border-color: var(--color-border-weather-2);
+  color: var(--color-text-on-dark);
+}
+
+.data-field.variant-weather-3 {
+  background-color: var(--color-bg-weather-3);
+  border-color: var(--color-border-weather-3);
+  color: var(--color-text-on-dark);
+}
+
+/* Régi variant class-ok (kompatibilitás) */
 .data-field.variant-weather-hot {
   background-color: var(--color-bg-weather-hot);
   border-color: var(--color-border-weather-hot);
@@ -1040,39 +1422,464 @@ button:focus-visible {
   border-color: var(--color-border-weather-cold);
 }
 
+/* Pressure variants - 7 fokozatú rendszer */
+.data-field.variant-pressure--3 {
+  background-color: var(--color-bg-pressure--3);
+  border-color: var(--color-border-pressure--3);
+  color: var(--color-text-on-dark);
+}
+
+.data-field.variant-pressure--2 {
+  background-color: var(--color-bg-pressure--2);
+  border-color: var(--color-border-pressure--2);
+  color: var(--color-text-on-dark);
+}
+
+.data-field.variant-pressure--1 {
+  background-color: var(--color-bg-pressure--1);
+  border-color: var(--color-border-pressure--1);
+  color: var(--color-text-on-light);
+}
+
+.data-field.variant-pressure-0 {
+  background-color: var(--color-bg-pressure-0);
+  border-color: var(--color-border-pressure-0);
+  color: var(--color-text-on-light);
+}
+
+.data-field.variant-pressure-1 {
+  background-color: var(--color-bg-pressure-1);
+  border-color: var(--color-border-pressure-1);
+  color: var(--color-text-on-light);
+}
+
+.data-field.variant-pressure-2 {
+  background-color: var(--color-bg-pressure-2);
+  border-color: var(--color-border-pressure-2);
+  color: var(--color-text-on-light);
+}
+
+.data-field.variant-pressure-3 {
+  background-color: var(--color-bg-pressure-3);
+  border-color: var(--color-border-pressure-3);
+  color: var(--color-text-on-light);
+}
+
+/* Régi variant class-ok (kompatibilitás) */
 .data-field.variant-pressure {
   background-color: var(--color-bg-pressure);
   border-color: var(--color-border-pressure);
 }
 
+/* Cloud variants - 7 fokozatú rendszer */
+.data-field.variant-cloud--3 {
+  background-color: var(--color-bg-cloud--3);
+  border-color: var(--color-border-cloud--3);
+  color: var(--color-text-on-light);
+}
+
+.data-field.variant-cloud--2 {
+  background-color: var(--color-bg-cloud--2);
+  border-color: var(--color-border-cloud--2);
+  color: var(--color-text-on-light);
+}
+
+.data-field.variant-cloud--1 {
+  background-color: var(--color-bg-cloud--1);
+  border-color: var(--color-border-cloud--1);
+  color: var(--color-text-on-light);
+}
+
+.data-field.variant-cloud-0 {
+  background-color: var(--color-bg-cloud-0);
+  border-color: var(--color-border-cloud-0);
+  color: var(--color-text-on-light);
+}
+
+.data-field.variant-cloud-1 {
+  background-color: var(--color-bg-cloud-1);
+  border-color: var(--color-border-cloud-1);
+  color: var(--color-text-on-dark);
+}
+
+.data-field.variant-cloud-2 {
+  background-color: var(--color-bg-cloud-2);
+  border-color: var(--color-border-cloud-2);
+  color: var(--color-text-on-dark);
+}
+
+.data-field.variant-cloud-3 {
+  background-color: var(--color-bg-cloud-3);
+  border-color: var(--color-border-cloud-3);
+  color: var(--color-text-on-dark);
+}
+
+/* Régi variant class-ok (kompatibilitás) */
 .data-field.variant-cloud {
   background-color: var(--color-bg-cloud);
   border-color: var(--color-border-cloud);
 }
 
+/* Rain variants - 7 fokozatú rendszer */
+.data-field.variant-rain--3 {
+  background-color: var(--color-bg-rain--3);
+  border-color: var(--color-border-rain--3);
+  color: var(--color-text-on-light);
+}
+
+.data-field.variant-rain--2 {
+  background-color: var(--color-bg-rain--2);
+  border-color: var(--color-border-rain--2);
+  color: var(--color-text-on-light);
+}
+
+.data-field.variant-rain--1 {
+  background-color: var(--color-bg-rain--1);
+  border-color: var(--color-border-rain--1);
+  color: var(--color-text-on-light);
+}
+
+.data-field.variant-rain-0 {
+  background-color: var(--color-bg-rain-0);
+  border-color: var(--color-border-rain-0);
+  color: var(--color-text-on-light);
+}
+
+.data-field.variant-rain-1 {
+  background-color: var(--color-bg-rain-1);
+  border-color: var(--color-border-rain-1);
+  color: var(--color-text-on-light);
+}
+
+.data-field.variant-rain-2 {
+  background-color: var(--color-bg-rain-2);
+  border-color: var(--color-border-rain-2);
+  color: var(--color-text-on-dark);
+}
+
+.data-field.variant-rain-3 {
+  background-color: var(--color-bg-rain-3);
+  border-color: var(--color-border-rain-3);
+  color: var(--color-text-on-dark);
+}
+
+/* Régi variant class-ok (kompatibilitás) */
 .data-field.variant-rain {
   background-color: var(--color-bg-rain);
   border-color: var(--color-border-rain);
 }
 
+/* Wind variants - 7 fokozatú rendszer */
+.data-field.variant-wind--3 {
+  background-color: var(--color-bg-wind--3);
+  border-color: var(--color-border-wind--3);
+  color: var(--color-text-on-light);
+}
+
+.data-field.variant-wind--2 {
+  background-color: var(--color-bg-wind--2);
+  border-color: var(--color-border-wind--2);
+  color: var(--color-text-on-light);
+}
+
+.data-field.variant-wind--1 {
+  background-color: var(--color-bg-wind--1);
+  border-color: var(--color-border-wind--1);
+  color: var(--color-text-on-light);
+}
+
+.data-field.variant-wind-0 {
+  background-color: var(--color-bg-wind-0);
+  border-color: var(--color-border-wind-0);
+  color: var(--color-text-on-light);
+}
+
+.data-field.variant-wind-1 {
+  background-color: var(--color-bg-wind-1);
+  border-color: var(--color-border-wind-1);
+  color: var(--color-text-on-dark);
+}
+
+.data-field.variant-wind-2 {
+  background-color: var(--color-bg-wind-2);
+  border-color: var(--color-border-wind-2);
+  color: var(--color-text-on-dark);
+}
+
+.data-field.variant-wind-3 {
+  background-color: var(--color-bg-wind-3);
+  border-color: var(--color-border-wind-3);
+  color: var(--color-text-on-dark);
+}
+
+/* Régi variant class-ok (kompatibilitás) */
 .data-field.variant-wind {
   background-color: var(--color-bg-wind);
   border-color: var(--color-border-wind);
 }
 
+/* Moon / Moon Phase variants - 7 fokozatú rendszer (-3-tól +3-ig) */
+.data-field.variant-moon--3 {
+  background-color: var(--color-bg-moon--3);
+  border-color: var(--color-border-moon--3);
+  color: var(--color-text-on-light);
+}
+
+.data-field.variant-moon--2 {
+  background-color: var(--color-bg-moon--2);
+  border-color: var(--color-border-moon--2);
+  color: var(--color-text-on-light);
+}
+
+.data-field.variant-moon--1 {
+  background-color: var(--color-bg-moon--1);
+  border-color: var(--color-border-moon--1);
+  color: var(--color-text-on-light);
+}
+
+.data-field.variant-moon-0 {
+  background-color: var(--color-bg-moon-0);
+  border-color: var(--color-border-moon-0);
+  color: var(--color-text-on-light);
+}
+
+.data-field.variant-moon-1 {
+  background-color: var(--color-bg-moon-1);
+  border-color: var(--color-border-moon-1);
+  color: var(--color-text-on-light);
+}
+
+.data-field.variant-moon-2 {
+  background-color: var(--color-bg-moon-2);
+  border-color: var(--color-border-moon-2);
+  color: var(--color-text-on-light);
+}
+
+.data-field.variant-moon-3 {
+  background-color: var(--color-bg-moon-3);
+  border-color: var(--color-border-moon-3);
+  color: var(--color-text-on-light);
+}
+
+/* Régi variant class-ok (kompatibilitás) */
 .data-field.variant-moon {
   background-color: var(--color-bg-moon);
   border-color: var(--color-border-moon);
 }
 
+/* UV variants - 7 fokozatú rendszer */
+.data-field.variant-uv--3 {
+  background-color: var(--color-bg-uv--3);
+  border-color: var(--color-border-uv--3);
+  color: var(--color-text-on-light);
+}
+
+.data-field.variant-uv--2 {
+  background-color: var(--color-bg-uv--2);
+  border-color: var(--color-border-uv--2);
+  color: var(--color-text-on-light);
+}
+
+.data-field.variant-uv--1 {
+  background-color: var(--color-bg-uv--1);
+  border-color: var(--color-border-uv--1);
+  color: var(--color-text-on-light);
+}
+
+.data-field.variant-uv-0 {
+  background-color: var(--color-bg-uv-0);
+  border-color: var(--color-border-uv-0);
+  color: var(--color-text-on-light);
+}
+
+.data-field.variant-uv-1 {
+  background-color: var(--color-bg-uv-1);
+  border-color: var(--color-border-uv-1);
+  color: var(--color-text-on-light);
+}
+
+.data-field.variant-uv-2 {
+  background-color: var(--color-bg-uv-2);
+  border-color: var(--color-border-uv-2);
+  color: var(--color-text-on-dark);
+}
+
+.data-field.variant-uv-3 {
+  background-color: var(--color-bg-uv-3);
+  border-color: var(--color-border-uv-3);
+  color: var(--color-text-on-dark);
+}
+
+/* Régi variant class-ok (kompatibilitás) */
 .data-field.variant-uv {
   background-color: var(--color-bg-uv);
   border-color: var(--color-border-uv);
 }
 
+/* Sun / Light Change variants - 2 fokozatú rendszer */
+.data-field.variant-sun-0 {
+  background-color: var(--color-bg-sun-0);
+  border-color: var(--color-border-sun-0);
+  color: var(--color-text-on-light);
+}
+
+.data-field.variant-sun-1 {
+  background-color: var(--color-bg-sun-1);
+  border-color: var(--color-border-sun-1);
+  color: var(--color-text-on-light);
+}
+
+/* Régi variant class-ok (kompatibilitás) */
 .data-field.variant-sun {
   background-color: var(--color-bg-sun);
   border-color: var(--color-border-sun);
+}
+
+/* Water level variants - 7 fokozatú rendszer */
+.data-field.variant-water--3 {
+  background-color: var(--color-bg-variant-water--3);
+  border-color: var(--color-border-variant-water--3);
+  color: var(--color-text-on-dark);
+}
+
+.data-field.variant-water--2 {
+  background-color: var(--color-bg-variant-water--2);
+  border-color: var(--color-border-variant-water--2);
+  color: var(--color-text-on-dark);
+}
+
+.data-field.variant-water--1 {
+  background-color: var(--color-bg-variant-water--1);
+  border-color: var(--color-border-variant-water--1);
+  color: var(--color-text-on-dark);
+}
+
+.data-field.variant-water-0 {
+  background-color: var(--color-bg-variant-water-0);
+  border-color: var(--color-border-variant-water-0);
+  color: var(--color-text-on-dark);
+}
+
+.data-field.variant-water-1 {
+  background-color: var(--color-bg-variant-water-1);
+  border-color: var(--color-border-variant-water-1);
+  color: var(--color-text-on-light);
+}
+
+.data-field.variant-water-2 {
+  background-color: var(--color-bg-variant-water-2);
+  border-color: var(--color-border-variant-water-2);
+  color: var(--color-text-on-light);
+}
+
+.data-field.variant-water-3 {
+  background-color: var(--color-bg-variant-water-3);
+  border-color: var(--color-border-variant-water-3);
+  color: var(--color-text-on-dark);
+}
+
+/* Régi variant class-ok (kompatibilitás) */
+.data-field.variant-water-low {
+  background-color: var(--color-bg-variant-water-low);
+  border-color: var(--color-border-variant-water-low);
+}
+
+.data-field.variant-water-high {
+  background-color: var(--color-bg-variant-water-high);
+  border-color: var(--color-border-variant-water-high);
+}
+
+/* Temperature variants - 7 fokozatú rendszer */
+.data-field.variant-temp--3 {
+  background-color: var(--color-bg-variant-temp--3);
+  border-color: var(--color-border-variant-temp--3);
+  color: var(--color-text-on-dark);
+}
+
+.data-field.variant-temp--2 {
+  background-color: var(--color-bg-variant-temp--2);
+  border-color: var(--color-border-variant-temp--2);
+  color: var(--color-text-on-dark);
+}
+
+.data-field.variant-temp--1 {
+  background-color: var(--color-bg-variant-temp--1);
+  border-color: var(--color-border-variant-temp--1);
+  color: var(--color-text-on-light);
+}
+
+.data-field.variant-temp-0 {
+  background-color: var(--color-bg-variant-temp-0);
+  border-color: var(--color-border-variant-temp-0);
+  color: var(--color-text-on-light);
+}
+
+.data-field.variant-temp-1 {
+  background-color: var(--color-bg-variant-temp-1);
+  border-color: var(--color-border-variant-temp-1);
+  color: var(--color-text-on-light);
+}
+
+.data-field.variant-temp-2 {
+  background-color: var(--color-bg-variant-temp-2);
+  border-color: var(--color-border-variant-temp-2);
+  color: var(--color-text-on-dark);
+}
+
+.data-field.variant-temp-3 {
+  background-color: var(--color-bg-variant-temp-3);
+  border-color: var(--color-border-variant-temp-3);
+  color: var(--color-text-on-dark);
+}
+
+/* Régi variant class-ok (kompatibilitás) */
+.data-field.variant-temp-hot {
+  background-color: var(--color-bg-variant-temp-hot);
+  border-color: var(--color-border-variant-temp-hot);
+}
+
+/* Pressure variants */
+.data-field.variant-pressure-low {
+  background-color: var(--color-bg-pressure-low);
+  border-color: var(--color-border-pressure-low);
+}
+
+.data-field.variant-pressure-high {
+  background-color: var(--color-bg-pressure-high);
+  border-color: var(--color-border-pressure-high);
+}
+
+/* Cloud variants */
+.data-field.variant-cloud-clear {
+  background-color: var(--color-bg-cloud-clear);
+  border-color: var(--color-border-cloud-clear);
+}
+
+.data-field.variant-cloud-partial {
+  background-color: var(--color-bg-cloud-partial);
+  border-color: var(--color-border-cloud-partial);
+}
+
+/* Rain variants */
+.data-field.variant-rain-low {
+  background-color: var(--color-bg-rain-low);
+  border-color: var(--color-border-rain-low);
+}
+
+.data-field.variant-rain-high {
+  background-color: var(--color-bg-rain-high);
+  border-color: var(--color-border-rain-high);
+}
+
+/* Wind variants */
+.data-field.variant-wind-light {
+  background-color: var(--color-bg-wind-light);
+  border-color: var(--color-border-wind-light);
+}
+
+.data-field.variant-wind-strong {
+  background-color: var(--color-bg-wind-strong);
+  border-color: var(--color-border-wind-strong);
 }
 
 /* Trend Badges inside data-field */
@@ -1131,12 +1938,12 @@ button:focus-visible {
 
 /* Main Container */
 .main-container {
-  padding: 2rem;
+  padding: clamp(1rem, 4vw, 2rem); /* Reszponzív padding */
   font-family: system-ui, sans-serif;
   position: relative;
   z-index: 10;
   width: 100%;
-  max-width: 800px;
+  max-width: 600px; /* 800px helyett - keskenyebb desktop nézet */
   margin: 0 auto;
   display: flex;
   flex-direction: column;
@@ -1144,10 +1951,33 @@ button:focus-visible {
   box-sizing: border-box;
 }
 
+/* Közepes mobil nézet */
+@media (max-width: 640px) {
+  .main-container {
+    padding: clamp(0.75rem, 2vw, 1rem);
+  }
+}
+
+/* Kis mobil nézet */
+@media (max-width: 360px) {
+  .main-container {
+    padding: clamp(0.5rem, 1.5vw, 0.75rem);
+  }
+  
+  h1 {
+    font-size: clamp(2.5rem, 10vw, 3.5rem) !important;
+    padding: 1.5rem 0.5rem 0.5rem 0.5rem !important;
+  }
+  
+  h1 span {
+    font-size: clamp(2.5rem, 10vw, 3.5rem) !important;
+  }
+}
+
 /* Mobil optimalizálás */
 @media (max-width: 480px) {
   .main-container {
-    padding: 1rem;
+    padding: clamp(0.5rem, 2vw, 1rem);
     max-width: 100%;
   }
 
@@ -1155,14 +1985,17 @@ button:focus-visible {
   input[type="text"] {
     width: 100% !important;
     box-sizing: border-box;
-    font-size: 16px !important; /* Prevents zoom on iOS */
+    font-size: 16px !important;
+    /* Prevents zoom on iOS */
     padding: 0.75rem !important;
-    min-height: 44px; /* Touch-friendly */
+    min-height: 44px;
+    /* Touch-friendly */
   }
 
   /* Gombok mobil optimalizálása */
   button {
-    min-height: 44px; /* Touch-friendly */
+    min-height: 44px;
+    /* Touch-friendly */
     padding: 0.75rem 1rem !important;
     font-size: 1rem !important;
   }
@@ -1180,57 +2013,183 @@ button:focus-visible {
   }
 
   /* Lista nézet mobil optimalizálása */
-  .list-view > div > div {
-    flex-direction: row !important; /* Egy sorban maradjon */
+  .list-view>div>div {
+    flex-direction: row !important;
+    /* Egy sorban maradjon */
     align-items: center !important;
-    padding: 0.5rem 0.75rem !important; /* Kisebb padding */
+    padding: 0.5rem 0.75rem !important;
+    /* Kisebb padding */
     gap: 0.5rem !important;
   }
 
-  .list-view > div > div > div:first-child {
-    flex-direction: row !important; /* Egy sorban maradjon */
+  .list-view>div>div>div:first-child {
+    flex-direction: row !important;
+    /* Egy sorban maradjon */
     align-items: center !important;
-    gap: 0.5rem !important; /* Kisebb gap */
+    gap: 0.5rem !important;
+    /* Kisebb gap */
     flex: 1 !important;
-    flex-wrap: wrap !important; /* Ha nem fér el, törjenek */
+    flex-wrap: wrap !important;
+    /* Ha nem fér el, törjenek */
   }
 
-  .list-view > div > div > div:first-child > span {
+  .list-view>div>div>div:first-child>span {
     min-width: auto !important;
-    display: inline-block !important; /* Inline-block, hogy egy sorban legyen */
-    white-space: nowrap !important; /* Ne törjön a szöveg */
+    display: inline-block !important;
+    /* Inline-block, hogy egy sorban legyen */
+    white-space: nowrap !important;
+    /* Ne törjön a szöveg */
   }
 
-  .list-view > div > div > button {
+  .list-view>div>div>button {
     align-self: flex-end !important;
     min-width: 44px !important;
     min-height: 44px !important;
     width: 44px !important;
     height: 44px !important;
+  }
+}
+
+/* =========================================
+   Statistics Section Styles
+   ========================================= */
+
+.statistics-section {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 0.75rem;
+  padding: clamp(1rem, 2vw, 1.5rem);
+  margin-bottom: 1.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
+}
+
+.statistics-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.statistics-header h2 {
+  margin: 0;
+  font-size: clamp(1.1rem, 2.5vw, 1.25rem);
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.statistics-close-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.5rem;
+  color: #64748b;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  line-height: 1;
+  transition: color 0.2s ease;
+  border-radius: 0.25rem;
+}
+
+.statistics-close-btn:hover {
+  color: #1e293b;
+  background: #f1f5f9;
+}
+
+.statistics-empty {
+  text-align: center;
+  padding: 2rem;
+  color: #64748b;
+  font-size: clamp(0.9rem, 2vw, 1rem);
+}
+
+.statistics-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.statistics-description {
+  font-size: clamp(0.85rem, 2vw, 0.95rem);
+  color: #475569;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.statistics-chart {
+  width: 100%;
+  overflow-x: auto;
+  padding: 1rem 0;
+  background: #f8fafc;
+  border-radius: 0.5rem;
+  border: 1px solid #e2e8f0;
+}
+
+.statistics-chart svg {
+  display: block;
+}
+
+.statistics-bar {
+  transition: opacity 0.2s ease;
+}
+
+.statistics-bar:hover {
+  opacity: 0.8;
+}
+
+.statistics-scale {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.statistics-fish-marker {
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+/* Responsive styles for statistics */
+@media (max-width: 768px) {
+  .statistics-section {
+    padding: clamp(0.75rem, 2vw, 1rem);
+    margin-bottom: 1rem;
+  }
+
+  .statistics-header {
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+  }
+
+  .statistics-header h2 {
+    font-size: clamp(1rem, 2.2vw, 1.1rem);
+  }
+
+  .statistics-description {
+    font-size: clamp(0.8rem, 1.8vw, 0.9rem);
+  }
+
+  .statistics-chart {
+    padding: 0.75rem 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .statistics-section {
+    padding: clamp(0.5rem, 1.5vw, 0.75rem);
+  }
+
+  .statistics-header h2 {
+    font-size: clamp(0.95rem, 2vw, 1rem);
+  }
+
+  .statistics-description {
+    font-size: clamp(0.75rem, 1.6vw, 0.85rem);
+  }
     font-size: 1.5rem !important;
   }
 }
 
 /* Typography Overrides */
-.data-field-value.text-hot {
-  color: var(--color-text-weather-hot);
-}
-
-.data-field-value.text-mild {
-  color: var(--color-text-weather-mild);
-}
-
-.data-field-value.text-cold {
-  color: var(--color-text-weather-cold);
-}
-
-.data-field-value.text-temp-warm {
-  color: var(--color-text-variant-temp-warm);
-}
-
-.data-field-value.text-temp-error {
-  color: var(--color-text-variant-temp-error);
-}
+/* Régi text class-ok eltávolítva - a variant class-ok már beállítják a színt */
 
 /* Layout Utilities */
 .flex-row-center {
@@ -1247,32 +2206,32 @@ button:focus-visible {
 
 /* Header Children */
 .card-header-date {
-  font-size: 0.85rem;
+  font-size: clamp(0.75rem, 2vw, 0.85rem); /* Reszponzív font-size */
   color: var(--color-text-secondary);
   font-weight: 500;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: clamp(0.15rem, 0.8vw, 0.25rem); /* Reszponzív gap */
 }
 
 .card-header-date span:first-child {
   font-weight: 600;
   color: var(--color-text-primary);
-  font-size: 0.9rem;
+  font-size: clamp(0.8rem, 2.2vw, 0.9rem); /* Reszponzív font-size */
 }
 
 .card-header-date span:last-child {
-  font-size: 0.8rem;
+  font-size: clamp(0.7rem, 1.8vw, 0.8rem); /* Reszponzív font-size */
 }
 
 .card-header-water {
-  font-size: 0.9rem;
+  font-size: clamp(0.8rem, 2.2vw, 0.9rem); /* Reszponzív font-size */
   font-weight: 600;
   color: #0369a1;
   /* hardcoded for now or use var */
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: clamp(0.25rem, 1vw, 0.5rem); /* Reszponzív gap */
   flex: 0 1 auto;
   min-width: 0;
 }
@@ -1284,12 +2243,12 @@ button:focus-visible {
   align-items: center;
   justify-content: center;
   gap: 0.25rem;
-  min-width: 150px;
+  min-width: 0; /* Reszponzív - nincs fix minimum szélesség */
 }
 
 .card-header-location h3 {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: clamp(1rem, 3vw, 1.25rem); /* Reszponzív font-size */
   font-weight: 700;
   color: var(--color-text-accent);
   letter-spacing: -0.01em;
@@ -1297,7 +2256,7 @@ button:focus-visible {
 }
 
 .card-header-coordinates {
-  font-size: 0.75rem;
+  font-size: clamp(0.65rem, 1.8vw, 0.75rem); /* Reszponzív font-size */
   color: var(--color-text-secondary);
   font-weight: 500;
   text-align: right;
@@ -1306,18 +2265,18 @@ button:focus-visible {
 }
 
 .card-header-water .water-icon {
-  font-size: 1.25rem;
+  font-size: clamp(1rem, 3vw, 1.25rem); /* Reszponzív font-size */
 }
 
 .card-header-water-info {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 0.5rem;
+  gap: clamp(0.25rem, 1vw, 0.5rem); /* Reszponzív gap */
 }
 
 .card-header-water-name {
-  font-size: 1.25rem;
+  font-size: clamp(1rem, 3vw, 1.25rem); /* Reszponzív font-size */
 }
 
 /* Layout Utilities */
@@ -1396,9 +2355,9 @@ button:focus-visible {
 .data-card-grid {
   display: grid;
   width: 100%;
-  gap: 0.75rem;
-  /* Fixed 2 columns as requested */
-  grid-template-columns: 1fr 1fr;
+  gap: clamp(0.5rem, 1.5vw, 0.75rem); /* Reszponzív gap */
+  /* Egy oszlop - minden data-field egymás alatt */
+  grid-template-columns: 1fr;
   align-items: stretch;
 }
 
@@ -1416,7 +2375,7 @@ button:focus-visible {
 @media (max-width: 480px) {
   .data-card-grid {
     grid-template-columns: 1fr;
-    gap: 0.75rem;
+    gap: clamp(0.5rem, 1.5vw, 0.75rem); /* Reszponzív gap */
   }
 
   /* Reset padding to default comfortable size since we have width now */
@@ -1432,11 +2391,11 @@ button:focus-visible {
   }
 
   .card-header-location h3 {
-    font-size: 1.15rem !important;
+    font-size: clamp(0.95rem, 3vw, 1.15rem) !important; /* Reszponzív font-size */
   }
 
   .card-header-water-name {
-    font-size: 1.1rem !important;
+    font-size: clamp(0.9rem, 2.8vw, 1.1rem) !important; /* Reszponzív font-size */
   }
 
   /* Water level chart container - desktop fix magasság */
@@ -1444,9 +2403,10 @@ button:focus-visible {
     position: relative;
     width: 90%;
     max-width: 90%;
-    height: 373.85px;
-    min-height: 373.85px;
-    padding: 0.5rem;
+    height: auto; /* Reszponzív magasság */
+    min-height: clamp(250px, 40vh, 373.85px); /* Reszponzív minimum magasság */
+    max-height: clamp(300px, 50vh, 450px); /* Reszponzív maximum magasság */
+    padding: clamp(0.25rem, 1vw, 0.5rem); /* Reszponzív padding */
     background-color: #ffffff;
     border-radius: 0.5rem;
     border: 1px solid #e2e8f0;
@@ -1462,11 +2422,18 @@ button:focus-visible {
 
   /* SVG mobil stílusok - reszponzív skálázás */
   @media (max-width: 768px) {
-    .water-level-chart svg {
+    .card-back .water-level-chart {
+      display: flex !important;
+      flex-direction: column !important;
+    }
+    
+    .card-back .water-level-chart svg {
       width: 100% !important;
       height: 100% !important;
       max-width: 100% !important;
       max-height: 100% !important;
+      flex: 1 1 auto !important;
+      min-height: 0 !important;
       display: block;
       object-fit: contain;
     }
@@ -1474,33 +2441,35 @@ button:focus-visible {
 
   /* Water level chart container - reszponzív mobilon */
   @media (max-width: 480px) {
-    .water-level-chart {
+    .card-back .water-level-chart {
       width: 100%;
       max-width: 100%;
-      height: 30vh;
-      max-height: 30vh;
-      min-height: 150px;
-      padding: 0.25rem;
+      flex: 1 1 auto;
+      min-height: 0;
+      padding: 0.1rem;
       overflow: hidden;
-      margin: 0 auto;
+      margin: 0.25rem 0;
       position: relative;
       box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
     }
   }
 
   /* Nagyobb mobil eszközök (481px-768px) */
   @media (min-width: 481px) and (max-width: 768px) {
-    .water-level-chart {
+    .card-back .water-level-chart {
       width: 100%;
       max-width: 100%;
-      height: 35vh;
-      max-height: 35vh;
-      min-height: 180px;
-      padding: 0.25rem;
+      flex: 1 1 auto;
+      min-height: 0;
+      padding: 0.1rem;
       overflow: hidden;
-      margin: 0 auto;
+      margin: 0.25rem 0;
       position: relative;
       box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
     }
   }
 
