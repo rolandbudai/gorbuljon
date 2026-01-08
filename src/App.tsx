@@ -2305,7 +2305,7 @@ function App() {
         )}
       </div>
       <main className="main-container">
-        <h1 style={{ position: 'relative', width: '100%', boxSizing: 'border-box', textAlign: 'center', overflow: 'visible', padding: '3rem 0.5rem 0.5rem 0.5rem', marginBottom: '0.25rem', minHeight: '120px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <h1 style={{ position: 'relative', width: '100%', maxWidth: '100%', boxSizing: 'border-box', textAlign: 'center', overflow: 'hidden', padding: 'clamp(1rem, 4vw, 3rem) clamp(0.5rem, 2vw, 1rem)', marginBottom: '0.25rem', minHeight: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <img
             src={logoImg}
             alt="Logo"
@@ -2317,13 +2317,13 @@ function App() {
               transform: 'translate(-50%, -50%)',
               zIndex: 0,
               opacity: 0.3,
-              maxWidth: '200px',
+              maxWidth: 'clamp(100px, 20vw, 200px)',
               height: 'auto',
               filter: 'brightness(0) invert(1)',
               width: 'auto',
             }}
           />
-          <span style={{ color: '#FFFFF7', display: 'block', wordWrap: 'break-word', overflowWrap: 'break-word', textAlign: 'center', position: 'relative', zIndex: 1 }}>PERGETŐNAPLÓ</span>
+          <span style={{ color: '#FFFFF7', display: 'block', wordWrap: 'break-word', overflowWrap: 'break-word', textAlign: 'center', position: 'relative', zIndex: 1, maxWidth: '100%', width: '100%', boxSizing: 'border-box' }}>PERGETŐNAPLÓ</span>
         </h1>
         <h4>Best horgász app in the world...</h4>
         <section
@@ -3931,7 +3931,7 @@ function App() {
             maxWidth: '100%',
           }}
         >
-          <div style={{ marginBottom: '1rem' }}>
+          <div style={{ marginBottom: '1rem', textAlign: 'center' }}>
             <h2 style={{ fontSize: '1.25rem', margin: 0, marginBottom: '0.75rem' }}>Naplózott fogások</h2>
           </div>
           {!user ? (
@@ -3940,7 +3940,7 @@ function App() {
             <>
               {/* Statisztikák gomb */}
               {records.length > 0 && (
-                <div style={{ marginBottom: '1rem' }}>
+                <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'center' }}>
                   <button
                     type="button"
                     onClick={() => setShowStatistics(!showStatistics)}
