@@ -1,16 +1,20 @@
-import React from 'react'
+import { useState } from 'react'
 import type { LocationRecord } from '../services/records'
-import { prepareD3Data } from '../utils/statistics'
-import { StatisticsChart } from './StatisticsChart'
+import { FishSuccessView } from './statistics/FishSuccessView'
+import { FishTypeAnalysis } from './statistics/FishTypeAnalysis'
+import { StatsSummaryCards } from './statistics/StatsSummaryCards'
+import { EnvironmentalCorrelation } from './statistics/EnvironmentalCorrelation'
 
 interface StatisticsSectionProps {
   records: LocationRecord[]
   onClose: () => void
 }
 
+type StatView = 'success' | 'fishType' | 'summary' | 'correlation'
+
 export function StatisticsSection({ records, onClose }: StatisticsSectionProps) {
-  const data = prepareD3Data(records)
-  
+  const [activeView, setActiveView] = useState<StatView>('summary')
+
   return (
     <div className="statistics-section">
       <div className="statistics-header">
@@ -23,19 +27,46 @@ export function StatisticsSection({ records, onClose }: StatisticsSectionProps) 
           ×
         </button>
       </div>
-      
+
       {records.length === 0 ? (
         <p className="statistics-empty">Nincs mentett rekord a statisztikák megjelenítéséhez.</p>
       ) : (
-        <div className="statistics-content">
-          <p className="statistics-description">
-            Az alábbi diagram az összes mentett rekord adatait mutatja. Minden adattípusnak saját vertikális skálája van, 
-            ahol a kék pontok jelzik a mentett értékeket.
-          </p>
-          <StatisticsChart data={data} />
-        </div>
+        <>
+          <div className="statistics-tabs">
+            <button
+              className={`stat-tab ${activeView === 'summary' ? 'active' : ''}`}
+              onClick={() => setActiveView('summary')}
+            >
+              📋 Összefoglaló
+            </button>
+            <button
+              className={`stat-tab ${activeView === 'success' ? 'active' : ''}`}
+              onClick={() => setActiveView('success')}
+            >
+              📊 Fogási Sikeresség
+            </button>
+            <button
+              className={`stat-tab ${activeView === 'fishType' ? 'active' : ''}`}
+              onClick={() => setActiveView('fishType')}
+            >
+              🐟 Halfaj Elemzés
+            </button>
+            <button
+              className={`stat-tab ${activeView === 'correlation' ? 'active' : ''}`}
+              onClick={() => setActiveView('correlation')}
+            >
+              🔥 Korreláció
+            </button>
+          </div>
+
+          <div className="statistics-content">
+            {activeView === 'summary' && <StatsSummaryCards records={records} />}
+            {activeView === 'success' && <FishSuccessView records={records} />}
+            {activeView === 'fishType' && <FishTypeAnalysis records={records} />}
+            {activeView === 'correlation' && <EnvironmentalCorrelation records={records} />}
+          </div>
+        </>
       )}
     </div>
   )
 }
-

@@ -922,4 +922,599 @@ export function prepareD3Data(records: LocationRecord[]): D3DataTypeData[] {
   return result
 }
 
+/**
+ * Bubble Chart adattípusok Chart.js-hez
+ */
+export type BubbleChartDataPoint = {
+  x: number              // X tengely érték (pl. vízállás)
+  y: number              // Y tengely érték (pl. vízhőmérséklet)
+  r: number              // Bubble sugár (fogásszám alapján)
+  backgroundColor: string // Bubble háttérszín (szint alapján)
+  borderColor: string    // Bubble border szín
+  recordId: string       // Rekord ID
+  label: string          // Tooltip címke
+  fishCount: number      // Fogásszám (könnyebb eléréshez)
+}
+
+export type BubbleChartConfig = {
+  xAxisType: DataType    // X tengely adattípus
+  yAxisType: DataType    // Y tengely adattípus
+  data: BubbleChartDataPoint[]
+}
+
+/**
+ * Floating Bar Chart adattípusok Chart.js-hez
+ * Minden bar egy tartományt reprezentál (min-max értékekkel)
+ */
+export type FloatingBarChartDataPoint = {
+  label: string          // Adattípus címke
+  data: [number, number] // [min, max] értékek
+  backgroundColor: string // Bar háttérszín (átlagos szint alapján)
+  borderColor: string    // Bar border szín
+  minValue: number       // Minimum érték
+  maxValue: number       // Maximum érték
+  avgValue: number       // Átlagos érték
+  level: number          // Szint (-3 to +3) az átlagos érték alapján
+  recordCount: number    // Rekordok száma
+  totalFishCount: number // Összes fogásszám
+}
+
+/**
+ * Kinyeri egy adattípus értékét egy rekordból
+ */
+function extractValueFromRecord(record: LocationRecord, type: DataType): number | null {
+  switch (type) {
+    case 'waterLevel':
+      if (record.waterDataSnapshot?.measurements && record.waterDataSnapshot.measurements.length > 0) {
+        const lastMeasurement = record.waterDataSnapshot.measurements[record.waterDataSnapshot.measurements.length - 1]
+        const value = typeof lastMeasurement.value === 'string' ? parseFloat(lastMeasurement.value) : lastMeasurement.value
+        return isNaN(value) ? null : value
+      }
+      return null
+    
+    case 'waterTemperature':
+      if (record.waterTemperatureSnapshot?.measurements && record.waterTemperatureSnapshot.measurements.length > 0) {
+        const lastMeasurement = record.waterTemperatureSnapshot.measurements[record.waterTemperatureSnapshot.measurements.length - 1]
+        const value = typeof lastMeasurement.value === 'string' ? parseFloat(lastMeasurement.value) : lastMeasurement.value
+        return isNaN(value) ? null : value
+      }
+      return null
+    
+    case 'airTemperature':
+      return record.weatherSnapshot?.airTemperatureC !== undefined ? record.weatherSnapshot.airTemperatureC : null
+    
+    case 'pressure':
+      return record.weatherSnapshot?.pressureHpa !== undefined ? record.weatherSnapshot.pressureHpa : null
+    
+    case 'windSpeed':
+      return record.weatherSnapshot?.windSpeedKph !== undefined ? record.weatherSnapshot.windSpeedKph : null
+    
+    case 'cloudCover':
+      return record.weatherSnapshot?.cloudCoverPercent !== undefined ? record.weatherSnapshot.cloudCoverPercent : null
+    
+    case 'precipitationChance':
+      return record.weatherSnapshot?.precipitationChancePercent !== undefined ? record.weatherSnapshot.precipitationChancePercent : null
+    
+    case 'uvIndex':
+      return record.weatherSnapshot?.uvIndex !== undefined ? record.weatherSnapshot.uvIndex : null
+    
+    case 'moonPhase':
+      if (record.weatherSnapshot?.moonPhase !== undefined && record.weatherSnapshot.moonPhase !== '-') {
+        const moonPhaseStr = typeof record.weatherSnapshot.moonPhase === 'string' 
+          ? record.weatherSnapshot.moonPhase 
+          : String(record.weatherSnapshot.moonPhase)
+        
+        const LUNAR_CYCLE_DAYS = 29.5
+        const phaseToDays: Record<string, number> = {
+          'New Moon': Math.round((180 / 360) * LUNAR_CYCLE_DAYS),
+          'Waxing Crescent': Math.round((135 / 360) * LUNAR_CYCLE_DAYS),
+          'First Quarter': Math.round((90 / 360) * LUNAR_CYCLE_DAYS),
+          'Waxing Gibbous': Math.round((45 / 360) * LUNAR_CYCLE_DAYS),
+          'Full Moon': 0,
+          'Waning Gibbous': Math.round((315 / 360) * LUNAR_CYCLE_DAYS),
+          'Last Quarter': Math.round((270 / 360) * LUNAR_CYCLE_DAYS),
+          'Waning Crescent': Math.round((225 / 360) * LUNAR_CYCLE_DAYS),
+        }
+        
+        const hungarianToEnglish: Record<string, string> = {
+          'Újhold': 'New Moon',
+          'Növekvő hold': 'Waxing Crescent',
+          'Első negyed': 'First Quarter',
+          'Telihold': 'Full Moon',
+          'Fogyó hold': 'Waning Gibbous',
+          'Utolsó negyed': 'Last Quarter',
+        }
+        
+        let englishPhase = moonPhaseStr
+        if (hungarianToEnglish[moonPhaseStr]) {
+          englishPhase = hungarianToEnglish[moonPhaseStr]
+        }
+        
+        return phaseToDays[englishPhase] ?? null
+      }
+      return null
+    
+    case 'lightChange':
+      if (record.weatherSnapshot?.sunrise && record.weatherSnapshot?.sunset) {
+        let referenceDate: Date | undefined = undefined
+        if (record.date && record.time) {
+          try {
+            const dateTimeStr = `${record.date} ${record.time}`
+            referenceDate = new Date(dateTimeStr)
+            if (isNaN(referenceDate.getTime())) {
+              referenceDate = new Date(record.createdAt)
+            }
+          } catch {
+            referenceDate = new Date(record.createdAt)
+          }
+        } else {
+          referenceDate = new Date(record.createdAt)
+        }
+        
+        return isLightChangeTime(record.weatherSnapshot.sunrise, record.weatherSnapshot.sunset, referenceDate) ? 1 : 0
+      }
+      return null
+    
+    default:
+      return null
+  }
+}
+
+/**
+ * Előkészíti az adatokat Chart.js bubble chart számára
+ */
+export function prepareBubbleChartData(
+  records: LocationRecord[],
+  xAxisType: DataType,
+  yAxisType: DataType
+): BubbleChartDataPoint[] {
+  const bubbles: BubbleChartDataPoint[] = []
+  const fishCounts: number[] = []
+  
+  // Első körben kinyerjük az összes értéket és fogásszámot
+  records.forEach(record => {
+    const xValue = extractValueFromRecord(record, xAxisType)
+    const yValue = extractValueFromRecord(record, yAxisType)
+    const fishCount = calculateFishCount(record)
+    
+    // Csak akkor adjuk hozzá, ha mindkét érték elérhető
+    if (xValue !== null && yValue !== null && fishCount > 0) {
+      fishCounts.push(fishCount)
+    }
+  })
+  
+  // Kiszámoljuk a min és max fogásszámot a normalizáláshoz
+  const minFishCount = fishCounts.length > 0 ? Math.min(...fishCounts) : 1
+  const maxFishCount = fishCounts.length > 0 ? Math.max(...fishCounts) : 1
+  
+  // Második körben létrehozzuk a bubble-okat
+  records.forEach(record => {
+    const xValue = extractValueFromRecord(record, xAxisType)
+    const yValue = extractValueFromRecord(record, yAxisType)
+    const fishCount = calculateFishCount(record)
+    
+    // Csak akkor adjuk hozzá, ha mindkét érték elérhető és van fogás
+    if (xValue !== null && yValue !== null && fishCount > 0) {
+      // Szint meghatározása az X tengely adattípus alapján
+      let level = 0
+      if (xAxisType === 'waterLevel') {
+        level = getWaterLevelLevel(xValue)
+      } else if (xAxisType === 'waterTemperature') {
+        level = getWaterTempLevel(xValue)
+      } else if (xAxisType === 'airTemperature') {
+        level = getAirTempLevel(xValue)
+      } else if (xAxisType === 'pressure') {
+        level = getPressureLevel(xValue)
+      } else if (xAxisType === 'cloudCover') {
+        level = getCloudCoverLevel(xValue)
+      } else if (xAxisType === 'precipitationChance') {
+        level = getRainLevel(xValue)
+      } else if (xAxisType === 'windSpeed') {
+        level = getWindLevel(xValue)
+      } else if (xAxisType === 'uvIndex') {
+        level = getUVLevel(xValue)
+      } else if (xAxisType === 'moonPhase') {
+        // Moon phase érték kezelése - az érték már napok száma (0-29.5)
+        const daysUntilFull = xValue
+        if (daysUntilFull === 0) {
+          level = 0
+        } else if (daysUntilFull <= 1) {
+          level = -1
+        } else if (daysUntilFull <= 2) {
+          level = -2
+        } else if (daysUntilFull <= 3) {
+          level = -3
+        } else if (daysUntilFull <= 4) {
+          level = 1
+        } else if (daysUntilFull <= 5) {
+          level = 2
+        } else {
+          level = 3
+        }
+      } else if (xAxisType === 'lightChange') {
+        level = xValue === 1 ? 1 : 0
+      }
+      
+      // Szín meghatározása
+      const color = getVariantColor(xAxisType, level)
+      
+      // Bubble méret normalizálása (5-30px sugár)
+      const range = maxFishCount - minFishCount
+      const normalizedRadius = range > 0
+        ? 5 + ((fishCount - minFishCount) / range) * 25
+        : 15 // Ha minden érték ugyanaz, középső méret
+      
+      // Tooltip címke
+      const xConfig = getDataTypeConfig(xAxisType)
+      const yConfig = getDataTypeConfig(yAxisType)
+      const decimalsX = xAxisType === 'pressure' ? 0 : 
+                       xAxisType === 'airTemperature' || xAxisType === 'waterTemperature' ? 1 : 0
+      const decimalsY = yAxisType === 'pressure' ? 0 : 
+                       yAxisType === 'airTemperature' || yAxisType === 'waterTemperature' ? 1 : 0
+      
+      const label = `${xConfig.label}: ${xValue.toFixed(decimalsX)}${xConfig.unit ? ` ${xConfig.unit}` : ''}, ${yConfig.label}: ${yValue.toFixed(decimalsY)}${yConfig.unit ? ` ${yConfig.unit}` : ''}, Fogások: ${fishCount}`
+      
+      bubbles.push({
+        x: xValue,
+        y: yValue,
+        r: normalizedRadius,
+        backgroundColor: color.bg,
+        borderColor: color.border,
+        recordId: record.id,
+        label,
+        fishCount,
+      })
+    }
+  })
+  
+  return bubbles
+}
+
+/**
+ * Előkészíti az adatokat Chart.js floating bar chart számára
+ * Minden adattípushoz kiszámolja a min-max tartományt és az átlagos értéket
+ */
+export function prepareFloatingBarChartData(
+  records: LocationRecord[]
+): FloatingBarChartDataPoint[] {
+  const dataTypes = getAllDataTypes()
+  const floatingBars: FloatingBarChartDataPoint[] = []
+  
+  dataTypes.forEach(type => {
+    const values: number[] = []
+    let totalFishCount = 0
+    let recordCount = 0
+    
+    // Kinyerjük az értékeket minden rekordból
+    records.forEach(record => {
+      const value = extractValueFromRecord(record, type)
+      const fishCount = calculateFishCount(record)
+      
+      if (value !== null) {
+        values.push(value)
+        totalFishCount += fishCount
+        recordCount++
+      }
+    })
+    
+    // Csak akkor adjuk hozzá, ha vannak értékek
+    if (values.length > 0) {
+      const minValue = Math.min(...values)
+      const maxValue = Math.max(...values)
+      const avgValue = values.reduce((sum, v) => sum + v, 0) / values.length
+      
+      // Szint meghatározása az átlagos érték alapján
+      let level = 0
+      if (type === 'waterLevel') {
+        level = getWaterLevelLevel(avgValue)
+      } else if (type === 'waterTemperature') {
+        level = getWaterTempLevel(avgValue)
+      } else if (type === 'airTemperature') {
+        level = getAirTempLevel(avgValue)
+      } else if (type === 'pressure') {
+        level = getPressureLevel(avgValue)
+      } else if (type === 'cloudCover') {
+        level = getCloudCoverLevel(avgValue)
+      } else if (type === 'precipitationChance') {
+        level = getRainLevel(avgValue)
+      } else if (type === 'windSpeed') {
+        level = getWindLevel(avgValue)
+      } else if (type === 'uvIndex') {
+        level = getUVLevel(avgValue)
+      } else if (type === 'moonPhase') {
+        const daysUntilFull = avgValue
+        if (daysUntilFull === 0) level = 0
+        else if (daysUntilFull <= 1) level = -1
+        else if (daysUntilFull <= 2) level = -2
+        else if (daysUntilFull <= 3) level = -3
+        else if (daysUntilFull <= 4) level = 1
+        else if (daysUntilFull <= 5) level = 2
+        else level = 3
+      } else if (type === 'lightChange') {
+        level = avgValue >= 0.5 ? 1 : 0
+      }
+      
+      // Szín meghatározása
+      const color = getVariantColor(type, level)
+      const config = getDataTypeConfig(type)
+      
+      floatingBars.push({
+        label: config.label,
+        data: [minValue, maxValue],
+        backgroundColor: color.bg,
+        borderColor: color.border,
+        minValue,
+        maxValue,
+        avgValue,
+        level,
+        recordCount,
+        totalFishCount,
+      })
+    }
+  })
+  
+  return floatingBars
+}
+
+/**
+ * Multi-Scale Chart adattípusok Chart.js-hez
+ * Minden adattípusnak saját normalizált skálája van (0-100%)
+ */
+export type MultiScaleDataPoint = {
+  dataType: DataType        // Adattípus
+  label: string             // Adattípus címke
+  unit: string              // Unit
+  values: Array<{
+    value: number           // Eredeti érték
+    normalizedValue: number // Normalizált érték (0-100%)
+    level: number           // Szint (-3 to +3)
+    color: { bg: string, border: string } // Szín
+    recordId: string        // Rekord ID
+    fishCount: number       // Fogásszám
+  }>
+  min: number               // Minimum érték (normalizáláshoz)
+  max: number               // Maximum érték (normalizáláshoz)
+}
+
+/**
+ * Előkészíti az adatokat Chart.js multi-scale bubble chart számára
+ * Minden adattípusnak saját normalizált skálája van (0-100%)
+ */
+export function prepareMultiScaleChartData(
+  records: LocationRecord[]
+): MultiScaleDataPoint[] {
+  const dataTypes = getAllDataTypes()
+  const multiScaleData: MultiScaleDataPoint[] = []
+  
+  dataTypes.forEach(type => {
+    const values: Array<{
+      value: number
+      recordId: string
+      fishCount: number
+    }> = []
+    
+    // Kinyerjük az értékeket minden rekordból
+    records.forEach(record => {
+      const value = extractValueFromRecord(record, type)
+      const fishCount = calculateFishCount(record)
+      
+      if (value !== null && fishCount > 0) {
+        values.push({
+          value,
+          recordId: record.id,
+          fishCount,
+        })
+      }
+    })
+    
+    // Csak akkor adjuk hozzá, ha vannak értékek
+    if (values.length > 0) {
+      // Kiszámoljuk a min és max értéket
+      const allValues = values.map(v => v.value)
+      let minValue = Math.min(...allValues)
+      let maxValue = Math.max(...allValues)
+      
+      // Ha minden érték ugyanaz, adjunk egy kis tartományt
+      if (minValue === maxValue) {
+        minValue = Math.max(0, minValue - 1)
+        maxValue = maxValue + 1
+      }
+      
+      const range = maxValue - minValue
+      
+      // Normalizáljuk az értékeket és meghatározzuk a szintet és színt
+      const normalizedValues = values.map(item => {
+        const normalizedValue = range > 0 
+          ? ((item.value - minValue) / range) * 100 
+          : 50
+        
+        // Szint meghatározása
+        let level = 0
+        if (type === 'waterLevel') {
+          level = getWaterLevelLevel(item.value)
+        } else if (type === 'waterTemperature') {
+          level = getWaterTempLevel(item.value)
+        } else if (type === 'airTemperature') {
+          level = getAirTempLevel(item.value)
+        } else if (type === 'pressure') {
+          level = getPressureLevel(item.value)
+        } else if (type === 'cloudCover') {
+          level = getCloudCoverLevel(item.value)
+        } else if (type === 'precipitationChance') {
+          level = getRainLevel(item.value)
+        } else if (type === 'windSpeed') {
+          level = getWindLevel(item.value)
+        } else if (type === 'uvIndex') {
+          level = getUVLevel(item.value)
+        } else if (type === 'moonPhase') {
+          const daysUntilFull = item.value
+          if (daysUntilFull === 0) level = 0
+          else if (daysUntilFull <= 1) level = -1
+          else if (daysUntilFull <= 2) level = -2
+          else if (daysUntilFull <= 3) level = -3
+          else if (daysUntilFull <= 4) level = 1
+          else if (daysUntilFull <= 5) level = 2
+          else level = 3
+        } else if (type === 'lightChange') {
+          level = item.value >= 0.5 ? 1 : 0
+        }
+        
+        // Szín meghatározása
+        const color = getVariantColor(type, level)
+        
+        return {
+          value: item.value,
+          normalizedValue: Math.max(0, Math.min(100, normalizedValue)),
+          level,
+          color,
+          recordId: item.recordId,
+          fishCount: item.fishCount,
+        }
+      })
+      
+      const config = getDataTypeConfig(type)
+      
+      multiScaleData.push({
+        dataType: type,
+        label: config.label,
+        unit: config.unit,
+        values: normalizedValues,
+        min: minValue,
+        max: maxValue,
+      })
+    }
+  })
+  
+  return multiScaleData
+}
+
+/**
+ * Scatter Chart adattípusok Chart.js-hez
+ * Szint szerint csoportosított és összesített adatok
+ */
+export type ScatterChartDataPoint = {
+  dataType: DataType        // Környezeti tényező típusa
+  level: number             // Szint (-3 to +3)
+  totalFishCount: number    // Összes fogásszám ezen a szinten
+  recordCount: number       // Rekordok száma ezen a szinten
+  avgValue: number          // Átlagos érték ezen a szinten
+  color: { bg: string, border: string } // Szín a szint alapján
+  label: string             // Tooltip címke
+}
+
+/**
+ * Előkészíti az adatokat Chart.js scatter chart számára
+ * Szint szerint csoportosítja és összesíti a fogásszámokat
+ */
+export function prepareScatterChartData(
+  records: LocationRecord[]
+): ScatterChartDataPoint[] {
+  const dataTypes = getAllDataTypes()
+  const scatterPoints: ScatterChartDataPoint[] = []
+  
+  dataTypes.forEach(type => {
+    // Értékek és fogásszámok kinyerése
+    const valuesWithFishCount: Array<{
+      value: number
+      recordId: string
+      fishCount: number
+    }> = []
+    
+    records.forEach(record => {
+      const value = extractValueFromRecord(record, type)
+      const fishCount = calculateFishCount(record)
+      
+      if (value !== null && fishCount > 0) {
+        valuesWithFishCount.push({
+          value,
+          recordId: record.id,
+          fishCount,
+        })
+      }
+    })
+    
+    // Szint szerint csoportosítás
+    const groupedByLevel = new Map<number, {
+      values: number[]
+      fishCounts: number[]
+      recordIds: string[]
+    }>()
+    
+    valuesWithFishCount.forEach(item => {
+      // Szint meghatározása
+      let level = 0
+      if (type === 'waterLevel') {
+        level = getWaterLevelLevel(item.value)
+      } else if (type === 'waterTemperature') {
+        level = getWaterTempLevel(item.value)
+      } else if (type === 'airTemperature') {
+        level = getAirTempLevel(item.value)
+      } else if (type === 'pressure') {
+        level = getPressureLevel(item.value)
+      } else if (type === 'cloudCover') {
+        level = getCloudCoverLevel(item.value)
+      } else if (type === 'precipitationChance') {
+        level = getRainLevel(item.value)
+      } else if (type === 'windSpeed') {
+        level = getWindLevel(item.value)
+      } else if (type === 'uvIndex') {
+        level = getUVLevel(item.value)
+      } else if (type === 'moonPhase') {
+        const daysUntilFull = item.value
+        if (daysUntilFull === 0) level = 0
+        else if (daysUntilFull <= 1) level = -1
+        else if (daysUntilFull <= 2) level = -2
+        else if (daysUntilFull <= 3) level = -3
+        else if (daysUntilFull <= 4) level = 1
+        else if (daysUntilFull <= 5) level = 2
+        else level = 3
+      } else if (type === 'lightChange') {
+        level = item.value >= 0.5 ? 1 : 0
+      }
+      
+      if (!groupedByLevel.has(level)) {
+        groupedByLevel.set(level, {
+          values: [],
+          fishCounts: [],
+          recordIds: [],
+        })
+      }
+      
+      const group = groupedByLevel.get(level)!
+      group.values.push(item.value)
+      group.fishCounts.push(item.fishCount)
+      group.recordIds.push(item.recordId)
+    })
+    
+    // Scatter pontok létrehozása minden szinthez
+    groupedByLevel.forEach((group, level) => {
+      const totalFishCount = group.fishCounts.reduce((sum, count) => sum + count, 0)
+      const recordCount = group.values.length
+      const avgValue = group.values.reduce((sum, val) => sum + val, 0) / group.values.length
+      
+      // Szín meghatározása
+      const color = getVariantColor(type, level)
+      const config = getDataTypeConfig(type)
+      const levelDescription = getLevelDescription(level, type)
+      
+      const decimals = type === 'pressure' ? 0 : 
+                      type === 'airTemperature' || type === 'waterTemperature' ? 1 : 0
+      
+      const label = `${config.label} - ${levelDescription} (${level})`
+      
+      scatterPoints.push({
+        dataType: type,
+        level,
+        totalFishCount,
+        recordCount,
+        avgValue,
+        color,
+        label,
+      })
+    })
+  })
+  
+  return scatterPoints
+}
+
 

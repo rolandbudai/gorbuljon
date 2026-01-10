@@ -1,63 +1,85 @@
 import React, { useEffect, useRef } from 'react'
 import * as d3 from 'd3'
 import type { D3DataTypeData } from '../utils/statistics'
-import { getAllDataTypes, getDataTypeConfig, getLevelDescription } from '../utils/statistics'
+import { getAllDataTypes, getDataTypeConfig } from '../utils/statistics'
 
 interface StatisticsChartProps {
   data: D3DataTypeData[]
 }
 
-// Helper függvények a modernizáláshoz
-
 /**
- * Szín világosítása százalékos értékkel
+ * Reszponzív font méret számítása
  */
-function lightenColor(hex: string, percent: number): string {
-  const num = parseInt(hex.replace('#', ''), 16)
-  const r = Math.min(255, Math.floor((num >> 16) + (255 - (num >> 16)) * (percent / 100)))
-  const g = Math.min(255, Math.floor(((num >> 8) & 0x00FF) + (255 - ((num >> 8) & 0x00FF)) * (percent / 100)))
-  const b = Math.min(255, Math.floor((num & 0x0000FF) + (255 - (num & 0x0000FF)) * (percent / 100)))
-  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`
+function getResponsiveFontSize(
+  isMobile: boolean,
+  minSize: number,
+  maxSize: number,
+  divisor: number
+): number {
+  const baseSize = window.innerWidth / divisor
+  return Math.max(minSize, Math.min(maxSize, baseSize))
 }
 
 /**
- * Border radius meghatározása réteg pozíció alapján
- * SVG-ben a rect rx/ry minden sarkot lekerekít, ezért csak az első és utolsó rétegnél alkalmazzuk
+ * Skála tartomány számítása az értékek alapján (egyszerűsített, padding nélkül)
  */
-function getBorderRadius(layerIndex: number, totalLayers: number): { rx: number, ry: number } {
-  if (totalLayers === 1) {
-    return { rx: 4, ry: 4 } // Egyetlen réteg: minden sarok lekerekítve
+function calculateScaleDomain(
+  values: number[],
+  configMin: number,
+  configMax: number,
+  avgValue: number
+): { min: number; max: number } {
+  const actualMin = values.length > 0 ? Math.min(...values) : configMin
+  const actualMax = values.length > 0 ? Math.max(...values) : configMax
+  
+  const minValue = Math.min(actualMin, configMin)
+  const maxValue = Math.max(actualMax, configMax, avgValue)
+  const range = maxValue - minValue
+  
+  return {
+    min: minValue,
+    max: range > 0 ? maxValue : minValue + 1 // Ensure a range for single values
   }
-  // Csak az első (alsó) és utolsó (felső) rétegnél alkalmazunk lekerekítést
-  if (layerIndex === 0 || layerIndex === totalLayers - 1) {
-    return { rx: 4, ry: 4 }
-  }
-  return { rx: 0, ry: 0 } // Közbenső rétegek: nincs lekerekítés
 }
 
 /**
- * Gradiens létrehozása egy színhez
+ * Átlagos érték számítása
  */
-function createGradientForColor(defs: d3.Selection<SVGDefsElement, unknown, null, undefined>, baseColor: string, id: string): string {
-  const lightColor = lightenColor(baseColor, 15)
-  const gradient = defs.append('linearGradient')
-    .attr('id', id)
-    .attr('x1', '0%')
-    .attr('y1', '0%')
-    .attr('x2', '0%')
-    .attr('y2', '100%')
+function calculateAverage(values: number[], fallback: number): number {
+  return values.length > 0 
+    ? values.reduce((sum, v) => sum + v, 0) / values.length 
+    : fallback
+}
+
+/**
+ * Tizedesjegyek számának meghatározása adattípus alapján
+ */
+function getDecimals(type: string): number {
+  if (type === 'pressure') return 0
+  if (type === 'airTemperature' || type === 'waterTemperature') return 1
+  return 0
+}
+
+/**
+ * Gradient szín számítása az érték pozíciója alapján a skálán
+ * Low values: kék színek, High values: piros/narancs színek
+ */
+function getGradientColor(valuePosition: number): string {
+  // Clamp value position between 0 and 1
+  const clamped = Math.max(0, Math.min(1, valuePosition))
   
-  gradient.append('stop')
-    .attr('offset', '0%')
-    .attr('stop-color', lightColor)
-    .attr('stop-opacity', 1)
+  // Interpolate between blue (low) and red/orange (high)
+  const lowColor = d3.rgb('#3B82F6') // Blue
+  const midColor = d3.rgb('#FACC15') // Yellow
+  const highColor = d3.rgb('#F97316') // Orange
   
-  gradient.append('stop')
-    .attr('offset', '100%')
-    .attr('stop-color', baseColor)
-    .attr('stop-opacity', 1)
-  
-  return `url(#${id})`
+  if (clamped < 0.5) {
+    // Interpolate between blue and yellow
+    return d3.interpolateRgb(lowColor, midColor)(clamped * 2).toString()
+  } else {
+    // Interpolate between yellow and orange
+    return d3.interpolateRgb(midColor, highColor)((clamped - 0.5) * 2).toString()
+  }
 }
 
 export function StatisticsChart({ data }: StatisticsChartProps) {
@@ -88,7 +110,14 @@ export function StatisticsChart({ data }: StatisticsChartProps) {
       
       const isMobile = window.innerWidth <= 768
       const chartHeight = 500
-      const chartPadding = { top: 40, right: 40, bottom: 80, left: 60 }
+      
+      const chartPadding = { 
+        top: 50, 
+        right: 20, 
+        bottom: 80,  // Címkék zóna
+        left: isMobile ? 50 : 70  // Skála címkékhez
+      }
+      
       const barWidth = isMobile ? 40 : 60
       const barGap = isMobile ? 15 : 25
       const chartWidth = chartData.length * (barWidth + barGap) + chartPadding.left + chartPadding.right
@@ -106,364 +135,171 @@ export function StatisticsChart({ data }: StatisticsChartProps) {
         .range([chartPadding.left, chartWidth - chartPadding.right])
         .padding(0.3)
       
-      // Normalizáljuk az értékeket 0-100 skálára minden adattípushoz
-      // Az oszlop magassága a normalizált értékek összege lesz
-      const maxStackHeight = 100 // Maximum normalizált összeg
+      // Minden adattípushoz külön Y-tengely skála létrehozása
+      const scaleData = new Map<string, {
+        scale: d3.ScaleLinear<number, number>
+        domain: { min: number; max: number }
+        avgValue: number
+        actualValues: number[]
+      }>()
       
-      const yScale = d3.scaleLinear()
-        .domain([0, maxStackHeight])
-        .range([chartHeight, chartPadding.top])
-      
-      // Modern glow effekt SVG filter létrehozása (egyszer)
-      const defs = svg.append('defs')
-      const glowFilter = defs.append('filter')
-        .attr('id', 'glow-filter')
-        .attr('x', '-50%')
-        .attr('y', '-50%')
-        .attr('width', '200%')
-        .attr('height', '200%')
-      
-      // Glow effekt létrehozása
-      glowFilter.append('feGaussianBlur')
-        .attr('stdDeviation', '4')
-        .attr('result', 'coloredBlur')
-      
-      const feMerge = glowFilter.append('feMerge')
-      feMerge.append('feMergeNode').attr('in', 'coloredBlur')
-      feMerge.append('feMergeNode').attr('in', 'SourceGraphic')
-      
-      // Drop shadow filter létrehozása - erősebb árnyék
-      const shadowFilter = defs.append('filter')
-        .attr('id', 'drop-shadow')
-        .attr('x', '-50%')
-        .attr('y', '-50%')
-        .attr('width', '200%')
-        .attr('height', '200%')
-      
-      shadowFilter.append('feGaussianBlur')
-        .attr('in', 'SourceAlpha')
-        .attr('stdDeviation', '4')
-        .attr('result', 'blur')
-      
-      shadowFilter.append('feOffset')
-        .attr('in', 'blur')
-        .attr('dx', '0')
-        .attr('dy', '4')
-        .attr('result', 'offsetBlur')
-      
-      const feComponentTransfer = shadowFilter.append('feComponentTransfer')
-        .attr('in', 'offsetBlur')
-        .attr('result', 'shadow')
-      
-      feComponentTransfer.append('feFuncA')
-        .attr('type', 'linear')
-        .attr('slope', '0.4')
-      
-      const shadowMerge = shadowFilter.append('feMerge')
-      shadowMerge.append('feMergeNode').attr('in', 'shadow')
-      shadowMerge.append('feMergeNode').attr('in', 'SourceGraphic')
-      
-      // Oszlop szín számítása az értékek számától függően
-      const getBarColorByValueCount = (count: number, maxCount: number): string => {
-        if (maxCount === 0) return '#E5E7EB'
-        const ratio = count / maxCount
-        
-        // Gradiens: világos (#E5E7EB) → közepes (#9CA3AF) → sötét (#1E293B)
-        if (ratio <= 0.33) return '#E5E7EB' // Világos
-        if (ratio <= 0.66) return '#9CA3AF' // Közepes
-        return '#1E293B' // Sötét
-      }
-      
-      // Maximum értékek száma minden oszlopban
-      const maxValueCount = Math.max(...chartData.map(d => d.values.length))
-      
-      // Opacity számítás függvény a fogásszám alapján
-      const getOpacityByFishCount = (fishCount: number, maxFishCount: number): number => {
-        if (maxFishCount === 0) return 0.3
-        const ratio = fishCount / maxFishCount
-        // Minimum opacity: 0.3, Maximum opacity: 1.0
-        // Lineáris skálázás: 0.3 + (ratio * 0.7)
-        return Math.max(0.3, Math.min(1.0, 0.3 + (ratio * 0.7)))
-      }
-      
-      // Gradiens cache: minden egyedi színhez gradiens definíciók
-      const gradientCache = new Map<string, string>()
-      
-      // Helper függvény gradiens létrehozásához vagy cache-ből való lekéréséhez
-      const getOrCreateGradient = (baseColor: string): string => {
-        if (gradientCache.has(baseColor)) {
-          return gradientCache.get(baseColor)!
-        }
-        
-        const gradientId = `gradient-${baseColor.replace('#', '')}`
-        const gradientUrl = createGradientForColor(defs, baseColor, gradientId)
-        gradientCache.set(baseColor, gradientUrl)
-        return gradientUrl
-      }
-      
-      // Rendereljük a stacked bar-okat
       chartData.forEach((typeData) => {
-        // Maximum fogásszám számítása az adott oszlopban
-        const maxFishCountForType = Math.max(
-          ...typeData.values.map(v => v.fishCount),
-          1 // Minimum 1, hogy elkerüljük a 0-val való osztást
-        )
+        const actualValues = typeData.values.map(v => v.value)
+        const avgValue = calculateAverage(actualValues, typeData.min)
+        const domain = calculateScaleDomain(actualValues, typeData.min, typeData.max, avgValue)
+        
+        const yScale = d3.scaleLinear()
+          .domain([domain.min, domain.max])
+          .range([chartHeight, chartPadding.top])
+        
+        scaleData.set(typeData.type, {
+          scale: yScale,
+          domain,
+          avgValue,
+          actualValues
+        })
+      })
+      
+      // ===== ZÓNA 1: Y-tengelyek renderelése háttérben =====
+      chartData.forEach((typeData) => {
         const x = xScale(typeData.type)
         if (x === undefined) return
         
-        const range = typeData.max - typeData.min
-        let yOffset = chartHeight
+        const scaleInfo = scaleData.get(typeData.type)
+        if (!scaleInfo) return
         
-        // Normalizáljuk az értékeket és számoljuk az összeget
-        // Fényváltás esetén külön kezelés: minden érték ugyanolyan magas legyen, hogy látható legyen
-        let normalizedValues = typeData.values.map(v => {
-          let normalized: number
-          if (typeData.type === 'lightChange') {
-            // Fényváltás esetén ideiglenes érték, később módosítjuk
-            normalized = 50
-          } else {
-            normalized = range > 0 ? ((v.value - typeData.min) / range) * 100 : 50
-          }
-          return {
-            ...v,
-            normalizedValue: Math.max(0, Math.min(100, normalized)),
-          }
-        })
+        const typeYScale = scaleInfo.scale
+        const axisX = x + xScale.bandwidth() / 2
+        const tickCount = isMobile ? 4 : 6
+        const decimals = getDecimals(typeData.type)
         
-        // Fényváltás esetén az oszlop magasságát úgy állítjuk be, hogy minden réteg látható legyen
-        if (typeData.type === 'lightChange' && normalizedValues.length > 0) {
-          // Minden réteg egyenlő magasságú: 100% / értékek száma
-          // Minimum magasság: ha csak 1-2 érték van, akkor is legyen látható (minimum 50% oszlop magasság)
-          const minTotalHeight = 50 // Minimum 50% oszlop magasság
-          const calculatedHeight = 100 // Teljes magasság
-          const totalNormalized = Math.max(minTotalHeight, calculatedHeight)
-          const layerHeight = totalNormalized / normalizedValues.length
-          
-          normalizedValues = normalizedValues.map(v => ({
-            ...v,
-            normalizedValue: layerHeight,
-          }))
-        }
-        
-        // Oszlop magasság egyenletesítése: minden oszlopban a normalizált értékek összege legyen 100%
-        // Ez biztosítja, hogy minden oszlop ugyanolyan magas legyen
-        const currentTotal = normalizedValues.reduce((sum, v) => sum + v.normalizedValue, 0)
-        if (currentTotal > 0) {
-          // Skálázzuk az értékeket úgy, hogy az összegük 100% legyen
-          const scaleFactor = maxStackHeight / currentTotal
-          normalizedValues = normalizedValues.map(v => ({
-            ...v,
-            normalizedValue: v.normalizedValue * scaleFactor,
-          }))
-        }
-        
-        // Oszlop háttérszíne az értékek számától függően
-        const barBackgroundColor = getBarColorByValueCount(typeData.values.length, maxValueCount)
-        
-        // Oszlop háttér réteg (overlay)
-        const totalHeight = normalizedValues.reduce((sum, v) => {
-          const layerHeight = (v.normalizedValue / maxStackHeight) * (chartHeight - chartPadding.top)
-          return sum + layerHeight
-        }, 0)
-        
-        if (totalHeight > 0) {
-          svg.append('rect')
-            .attr('x', x)
-            .attr('y', chartHeight - totalHeight)
-            .attr('width', xScale.bandwidth())
-            .attr('height', totalHeight)
-            .attr('fill', barBackgroundColor)
-            .attr('opacity', 0.2) // Átlátszó overlay
-            .attr('pointer-events', 'none')
-        }
-        
-        // Kumulatív fogásszám számítása
-        let cumulativeFishCount = 0
-        
-        // Először számoljuk ki az összes kumulatív fogásszámot, hogy megtaláljuk a maximumot
-        const cumulativeFishCounts: number[] = []
-        normalizedValues.forEach((value) => {
-          cumulativeFishCount += value.fishCount
-          cumulativeFishCounts.push(cumulativeFishCount)
-        })
-        
-        // Legmagasabb kumulatív fogásszámú réteg azonosítása az adott oszlopban
-        const maxCumulativeFishCount = Math.max(...cumulativeFishCounts, 0)
-        
-        // Reset cumulative counter
-        cumulativeFishCount = 0
-        
-        // Rétegek renderelése (alulról felfelé)
-        const totalLayers = normalizedValues.length
-        normalizedValues.forEach((value, index) => {
-          const layerHeight = (value.normalizedValue / maxStackHeight) * (chartHeight - chartPadding.top)
-          cumulativeFishCount += value.fishCount
-          
-          // Opacity számítása a fogásszám alapján (az adott oszlop maximuma alapján)
-          const layerOpacity = getOpacityByFishCount(value.fishCount, maxFishCountForType)
-          
-          // Ellenőrizzük, hogy ez a legmagasabb kumulatív fogásszámú réteg-e
-          const isMaxFishCount = cumulativeFishCount === maxCumulativeFishCount && maxCumulativeFishCount > 0
-          
-          // Border radius meghatározása
-          const borderRadius = getBorderRadius(index, totalLayers)
-          
-          // Gradiens létrehozása vagy cache-ből lekérése
-          const gradientFill = getOrCreateGradient(value.color.bg)
-          
-          // Réteg renderelése animációval
-          const centerX = x + xScale.bandwidth() / 2
-          const centerY = yOffset - layerHeight / 2
-          
-          const layer = svg.append('rect')
-            .attr('x', x)
-            .attr('y', yOffset - layerHeight)
-            .attr('width', xScale.bandwidth())
-            .attr('height', layerHeight)
-            .attr('rx', borderRadius.rx)
-            .attr('ry', borderRadius.ry)
-            .attr('fill', gradientFill)
-            .attr('stroke', isMaxFishCount ? '#FACC15' : value.color.border)
-            .attr('stroke-width', isMaxFishCount ? 3 : 1)
-            .attr('opacity', 0) // Kezdetben láthatatlan az animációhoz
-            .attr('filter', isMaxFishCount ? 'url(#glow-filter)' : 'url(#drop-shadow)')
-            .attr('data-record-id', value.recordId)
-            .attr('data-type', typeData.type)
-            .attr('data-value', value.value)
-            .attr('data-level', value.level)
-            .attr('data-fish-count', cumulativeFishCount)
-            .style('cursor', 'pointer')
-          
-          // Animáció: fade-in és scale-up
-          // SVG-ben a transform origin-t translate-dal kell szimulálni
-          layer.attr('transform', `translate(${centerX}, ${centerY}) scale(0.95) translate(${-centerX}, ${-centerY})`)
-          
-          layer.transition()
-            .duration(400)
-            .delay(index * 25)
-            .attr('opacity', layerOpacity)
-            .attr('transform', `translate(${centerX}, ${centerY}) scale(1) translate(${-centerX}, ${-centerY})`)
-          
-          // Hover animáció
-          layer.on('mouseenter', function() {
-            d3.select(this)
-              .transition()
-              .duration(200)
-              .attr('transform', `translate(${centerX}, ${centerY}) scale(1.02) translate(${-centerX}, ${-centerY})`)
+        // Y tengely létrehozása
+        const yAxis = d3.axisLeft(typeYScale)
+          .ticks(tickCount)
+          .tickFormat((d) => {
+            return `${Number(d).toFixed(decimals)}${typeData.unit ? ` ${typeData.unit}` : ''}`
           })
-          .on('mouseleave', function() {
-            d3.select(this)
-              .transition()
-              .duration(200)
-              .attr('transform', `translate(${centerX}, ${centerY}) scale(1) translate(${-centerX}, ${-centerY})`)
-          })
-          
-          // Fogásszám megjelenítése a rétegen belül
-          if (layerHeight > 15 && cumulativeFishCount > 0) { // Csak ha elég magas a réteg és van fogás
-            const textY = yOffset - layerHeight / 2
-            
-            // Szöveg színének meghatározása a háttér szín világossága alapján
-            const bgColor = value.color.bg
-            let textColor = '#000000' // Alapértelmezett fekete
-            
-            // HEX szín RGB értékeinek kinyerése
-            const hex = bgColor.replace('#', '')
-            if (hex.length === 6) {
-              const r = parseInt(hex.substring(0, 2), 16)
-              const g = parseInt(hex.substring(2, 4), 16)
-              const b = parseInt(hex.substring(4, 6), 16)
-              
-              // Relatív világosság számítása (0-1 skála)
-              const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
-              
-              // Ha a háttér világos (luminance >= 0.5), sötét szöveg
-              // Ha a háttér sötét (luminance < 0.5), világos szöveg
-              if (luminance < 0.5) {
-                textColor = '#FFFFFF' // Világos háttér → fehér szöveg
-              } else {
-                textColor = '#000000' // Világos háttér → fekete szöveg
-              }
-            } else {
-              // Ha nem 6 karakteres HEX, használjuk a level alapján
-              textColor = value.level <= 0 ? '#FFFFFF' : '#000000'
-            }
-            
-            // Font méret és súly a legmagasabb értéknél
-            const fontSize = isMaxFishCount 
-              ? (isMobile ? 13 : 16) // Nagyobb font-size
-              : (isMobile ? 9 : 11)
-            const fontWeight = isMaxFishCount ? 900 : 700 // Vastagabb font-weight
-            
-            svg.append('text')
-              .attr('x', x + xScale.bandwidth() / 2)
-              .attr('y', textY)
-              .attr('text-anchor', 'middle')
-              .attr('dominant-baseline', 'middle')
-              .attr('font-size', fontSize)
-              .attr('font-weight', fontWeight)
-              .attr('fill', textColor)
-              .attr('pointer-events', 'none')
-              .text(cumulativeFishCount.toString())
-          }
-          
-          yOffset -= layerHeight
-        })
         
-        // Adattípus címke alul (függőlegesen)
-        const labelFontSize = isMobile 
-          ? Math.max(11, Math.min(14, window.innerWidth / 30)) // Mobil: 11-14px között, reszponzív
-          : Math.max(13, Math.min(16, window.innerWidth / 50)) // Desktop: 13-16px között, reszponzív
+        const yAxisGroup = svg.append('g')
+          .attr('transform', `translate(${axisX}, 0)`)
+          .attr('class', 'y-axis-background')
+          .style('pointer-events', 'none')
+          .call(yAxis)
+        
+        // Tengely vonal
+        yAxisGroup.select('.domain')
+          .attr('stroke', '#94a3b8')
+          .attr('stroke-width', 1.5)
+          .attr('opacity', 0.6)
+        
+        // Grid vonalak - csak az oszlop szélességében
+        const halfBarWidth = xScale.bandwidth() / 2
+        yAxisGroup.selectAll('.tick line')
+          .attr('stroke', '#E2E8F0')
+          .attr('stroke-width', 0.5)
+          .attr('stroke-opacity', 0.3)
+          .attr('x1', -halfBarWidth)
+          .attr('x2', halfBarWidth)
+        
+        // Tick szövegek
+        const tickFontSize = getResponsiveFontSize(isMobile, 11, 16, isMobile ? 25 : 40)
+        const labelOffset = -halfBarWidth - (isMobile ? 6 : 8)
+        
+        yAxisGroup.selectAll('text')
+          .attr('font-size', tickFontSize)
+          .attr('fill', '#475569')
+          .attr('font-weight', 600)
+          .attr('dx', labelOffset)
+          .attr('text-anchor', 'end')
+          .style('pointer-events', 'none')
+          .style('user-select', 'none')
+      })
+      
+      // ===== ZÓNA 2: Oszlopok renderelése =====
+      chartData.forEach((typeData) => {
+        const x = xScale(typeData.type)
+        if (x === undefined) return
+        
+        const scaleInfo = scaleData.get(typeData.type)
+        if (!scaleInfo) return
+        
+        const yScale = scaleInfo.scale
+        const domain = scaleInfo.domain
+        const avgValue = scaleInfo.avgValue
+        
+        // Oszlop pozíció és méret
+        const barX = x
+        const barWidth = xScale.bandwidth()
+        const barY = yScale(avgValue)
+        const barHeight = chartHeight - barY
+        
+        // Gradient szín számítása az érték pozíciója alapján
+        const valuePosition = (avgValue - domain.min) / (domain.max - domain.min)
+        const barColor = getGradientColor(valuePosition)
+        
+        // Oszlop renderelése
+        const bar = svg.append('rect')
+          .attr('x', barX)
+          .attr('y', barY)
+          .attr('width', barWidth)
+          .attr('height', 0)
+          .attr('fill', barColor)
+          .attr('stroke', '#1e293b')
+          .attr('stroke-width', 1)
+          .attr('rx', 4)
+          .attr('ry', 4)
+          .style('cursor', 'pointer')
+          .attr('data-type', typeData.type)
+          .attr('data-value', avgValue)
+        
+        // Animáció
+        bar.transition()
+          .duration(400)
+          .attr('height', barHeight)
+        
+        // Hover animáció
+        bar.on('mouseenter', function() {
+          d3.select(this)
+            .transition()
+            .duration(200)
+            .attr('opacity', 0.8)
+            .attr('stroke-width', 2)
+        })
+        .on('mouseleave', function() {
+          d3.select(this)
+            .transition()
+            .duration(200)
+            .attr('opacity', 1)
+            .attr('stroke-width', 1)
+        })
+      })
+      
+      // ===== ZÓNA 3: Címkék renderelése vízszintesen az oszlopok alatt =====
+      chartData.forEach((typeData) => {
+        const x = xScale(typeData.type)
+        if (x === undefined) return
+        
+        const labelX = x + xScale.bandwidth() / 2
+        const labelY = chartHeight + chartPadding.top - 20
+        
+        const labelFontSize = getResponsiveFontSize(isMobile, 13, 18, isMobile ? 25 : 40)
         
         svg.append('text')
-          .attr('x', x + xScale.bandwidth() / 2)
-          .attr('y', chartHeight + chartPadding.top + 25)
+          .attr('x', labelX)
+          .attr('y', labelY)
           .attr('text-anchor', 'middle')
-          .attr('transform', `rotate(-90, ${x + xScale.bandwidth() / 2}, ${chartHeight + chartPadding.top + 25})`)
           .attr('font-size', labelFontSize)
           .attr('fill', '#1e293b')
-          .attr('font-weight', 600)
+          .attr('font-weight', 700)
+          .style('pointer-events', 'none')
+          .style('user-select', 'none')
           .text(typeData.label)
       })
       
-      // Y tengely (normalizált értékek) - modernizálva
-      const yAxis = d3.axisLeft(yScale)
-        .ticks(5)
-        .tickFormat(d => `${d}%`)
+      // ===== Tooltip létrehozása =====
+      const tooltipFontSize = getResponsiveFontSize(isMobile, 13, 18, isMobile ? 25 : 35)
+      const tooltipPadding = isMobile ? '12px 16px' : '14px 18px'
       
-      const yAxisGroup = svg.append('g')
-        .attr('transform', `translate(${chartPadding.left}, 0)`)
-        .call(yAxis)
-      
-      // Tengely vonal modernizálása
-      yAxisGroup.select('.domain')
-        .attr('stroke', '#E5E7EB')
-        .attr('stroke-width', 0.5)
-      
-      // Grid vonalak hozzáadása
-      yAxisGroup.selectAll('.tick line')
-        .attr('stroke', '#E5E7EB')
-        .attr('stroke-width', 0.5)
-        .attr('stroke-opacity', 0.3)
-        .attr('x2', chartWidth - chartPadding.left - chartPadding.right)
-      
-      // Tick szövegek modernizálása
-      yAxisGroup.selectAll('text')
-        .attr('font-size', isMobile ? 9 : 10)
-        .attr('fill', '#64748b')
-        .attr('font-weight', 500)
-      
-      // Y tengely címke modernizálása
-      svg.append('text')
-        .attr('transform', 'rotate(-90)')
-        .attr('x', -(chartHeight / 2))
-        .attr('y', 20)
-        .attr('text-anchor', 'middle')
-        .attr('font-size', isMobile ? 10 : 12)
-        .attr('fill', '#64748b')
-        .attr('font-weight', 600)
-        .text('Normalizált érték (%)')
-      
-      // Tooltip létrehozása (csak ha még nincs)
       let tooltip = d3.select('.statistics-tooltip')
       if (tooltip.empty()) {
         tooltip = d3.select('body').append('div')
@@ -471,10 +307,11 @@ export function StatisticsChart({ data }: StatisticsChartProps) {
           .style('position', 'absolute')
           .style('background-color', '#1e293b')
           .style('color', '#ffffff')
-          .style('padding', '10px 14px')
+          .style('padding', tooltipPadding)
           .style('border-radius', '8px')
-          .style('font-size', '12px')
+          .style('font-size', `${tooltipFontSize}px`)
           .style('font-weight', '500')
+          .style('line-height', '1.5')
           .style('box-shadow', '0 4px 12px rgba(0, 0, 0, 0.15)')
           .style('backdrop-filter', 'blur(10px)')
           .style('-webkit-backdrop-filter', 'blur(10px)')
@@ -482,42 +319,42 @@ export function StatisticsChart({ data }: StatisticsChartProps) {
           .style('pointer-events', 'none')
           .style('z-index', 10000)
           .style('transition', 'opacity 0.2s ease-in-out')
+      } else {
+        tooltip
+          .style('font-size', `${tooltipFontSize}px`)
+          .style('padding', tooltipPadding)
       }
       
-      // Tooltip eseménykezelők
-      svg.selectAll('rect[data-record-id]')
+      // Tooltip eseménykezelők az oszlopokhoz
+      svg.selectAll('rect[data-type]')
         .on('mouseover', function(event) {
           const rect = d3.select(this)
-          const recordId = rect.attr('data-record-id')
           const type = rect.attr('data-type')
           const value = parseFloat(rect.attr('data-value'))
-          const level = parseInt(rect.attr('data-level'))
-          const originalOpacity = parseFloat(rect.attr('opacity')) || 1
           
           const item = chartData.find(d => d.type === type)
           if (!item) return
           
-          const decimals = type === 'pressure' ? 0 : 
-                          type === 'airTemperature' || type === 'waterTemperature' ? 1 : 0
+          const scaleInfo = scaleData.get(type)
+          if (!scaleInfo) return
           
-          const levelDescription = getLevelDescription(level, type)
-          const fishCount = parseInt(rect.attr('data-fish-count')) || 0
+          const decimals = getDecimals(type)
+          const actualValues = scaleInfo.actualValues
+          const minValue = actualValues.length > 0 ? Math.min(...actualValues) : item.min
+          const maxValue = actualValues.length > 0 ? Math.max(...actualValues) : item.max
+          
+          const titleFontSize = getResponsiveFontSize(isMobile, 15, 20, isMobile ? 22 : 30)
           
           tooltip
             .html(`
-              <div style="font-weight: 600; margin-bottom: 6px; font-size: 13px;">${item.label}</div>
-              <div style="margin-bottom: 3px;">Érték: ${value.toFixed(decimals)}${item.unit ? ` ${item.unit}` : ''}</div>
-              <div style="margin-bottom: 3px;">Szint: ${levelDescription || level}</div>
-              <div>Fogások: ${fishCount}</div>
+              <div style="font-weight: 700; margin-bottom: 8px; font-size: ${titleFontSize}px;">${item.label}</div>
+              <div style="margin-bottom: 5px; font-size: ${tooltipFontSize}px;">Átlagos érték: ${value.toFixed(decimals)}${item.unit ? ` ${item.unit}` : ''}</div>
+              <div style="margin-bottom: 5px; font-size: ${tooltipFontSize}px;">Minimum: ${minValue.toFixed(decimals)}${item.unit ? ` ${item.unit}` : ''}</div>
+              <div style="font-size: ${tooltipFontSize}px;">Maximum: ${maxValue.toFixed(decimals)}${item.unit ? ` ${item.unit}` : ''}</div>
             `)
             .transition()
             .duration(200)
             .style('opacity', 1)
-          
-          // Hover esetén kissé emeljük az opacity-t, de ne legyen túl erős
-          rect.transition()
-            .duration(200)
-            .attr('opacity', Math.min(1.0, originalOpacity + 0.2))
         })
         .on('mousemove', function(event) {
           tooltip
@@ -525,13 +362,9 @@ export function StatisticsChart({ data }: StatisticsChartProps) {
             .style('top', `${event.pageY - 10}px`)
         })
         .on('mouseout', function() {
-          const rect = d3.select(this)
-          const originalOpacity = parseFloat(rect.attr('opacity')) || 1
           tooltip.transition()
             .duration(200)
             .style('opacity', 0)
-          // Visszaállítjuk az eredeti opacity-t
-          rect.style('opacity', originalOpacity)
         })
     }
     
