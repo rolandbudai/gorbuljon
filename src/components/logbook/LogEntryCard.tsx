@@ -182,7 +182,7 @@ export const LogEntryCard: React.FC<LogEntryCardProps> = ({ record, onDelete, on
                                     e.currentTarget.style.color = '#3b82f6'
                                 }}
                             >
-                                Szerkesztés
+                                📂 Megnyitás
                             </button>
                         )}
                     </div>

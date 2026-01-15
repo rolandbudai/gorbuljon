@@ -64,10 +64,20 @@ type WeatherApiResponse = {
   }
   forecast: {
     forecastday: Array<{
+      date?: string
       date_epoch: number
       day: {
         daily_chance_of_rain: number
         daily_chance_of_snow: number
+        maxtemp_c: number
+        mintemp_c: number
+        avgtemp_c: number
+        maxwind_kph: number
+        totalprecip_mm: number
+        condition: {
+          text: string
+          icon: string
+        }
       }
       hour: Array<{
         time_epoch: number
@@ -93,6 +103,24 @@ export type WeatherData = {
   uvIndex: number
   precipitationChancePercent: number
   precipitationIntensityMmPerHour: number
+  sunrise: string
+  sunset: string
+  moonPhase: string
+  forecasts?: WeatherForecastDay[]
+}
+
+export type WeatherForecastDay = {
+  date: string
+  dateEpoch: number
+  maxTempC: number
+  minTempC: number
+  avgTempC: number
+  maxWindKph: number
+  totalPrecipMm: number
+  dailyChanceOfRain: number
+  dailyChanceOfSnow: number
+  conditionText: string
+  conditionIcon: string
   sunrise: string
   sunset: string
   moonPhase: string
@@ -132,7 +160,7 @@ function extractPreviousHourPressure(data: WeatherApiResponse) {
   return candidates.length > 0 ? candidates[0].pressure_mb : undefined
 }
 
-export async function fetchWeather(locationQuery: string): Promise<WeatherData> {
+export async function fetchWeather(locationQuery: string, days: number = 3): Promise<WeatherData> {
   const apiKey = import.meta.env.VITE_WEATHER_API_KEY
   if (!apiKey) {
     throw new Error('A WeatherAPI kulcs hiányzik. Add hozzá a VITE_WEATHER_API_KEY változót a .env.local fájlhoz.')
@@ -141,7 +169,7 @@ export async function fetchWeather(locationQuery: string): Promise<WeatherData> 
   const url = new URL(WEATHER_API_URL)
   url.searchParams.set('key', apiKey)
   url.searchParams.set('q', locationQuery)
-  url.searchParams.set('days', '1')
+  url.searchParams.set('days', days.toString())
   url.searchParams.set('aqi', 'no')
   url.searchParams.set('alerts', 'no')
 
@@ -175,6 +203,22 @@ export async function fetchWeather(locationQuery: string): Promise<WeatherData> 
     sunrise: forecastDay?.astro.sunrise ?? '-',
     sunset: forecastDay?.astro.sunset ?? '-',
     moonPhase: parseMoonPhase(forecastDay?.astro.moon_phase ?? '-'),
+    forecasts: data.forecast.forecastday.map(day => ({
+      date: day.date || new Date(day.date_epoch * 1000).toISOString().split('T')[0], // API might return date string
+      dateEpoch: day.date_epoch,
+      maxTempC: day.day.maxtemp_c,
+      minTempC: day.day.mintemp_c,
+      avgTempC: day.day.avgtemp_c,
+      maxWindKph: day.day.maxwind_kph,
+      totalPrecipMm: day.day.totalprecip_mm,
+      dailyChanceOfRain: day.day.daily_chance_of_rain,
+      dailyChanceOfSnow: day.day.daily_chance_of_snow,
+      conditionText: day.day.condition.text,
+      conditionIcon: day.day.condition.icon,
+      sunrise: day.astro.sunrise,
+      sunset: day.astro.sunset,
+      moonPhase: parseMoonPhase(day.astro.moon_phase)
+    }))
   }
 }
 

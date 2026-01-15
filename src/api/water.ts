@@ -114,9 +114,9 @@ async function callApi(params: Record<string, string | number | undefined>): Pro
   // Futásidőben ellenőrizzük, hogy dev módban vagyunk-e
   // Dev módban Vite proxy-t használunk, production-ben Firebase Cloud Function-t
   const isDev = import.meta.env.DEV
-  const isLocalhost = typeof window !== 'undefined' && 
+  const isLocalhost = typeof window !== 'undefined' &&
     (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-  
+
   let url: URL
   if (isDev && isLocalhost) {
     // Dev módban Vite proxy-t használunk
@@ -157,12 +157,12 @@ async function callApi(params: Record<string, string | number | undefined>): Pro
 
   // Eltávolítjuk a HTML tag-eket (<pre>, </pre>, stb.), ha vannak
   let cleanedText = responseText.trim()
-  
+
   // Ha HTML <pre> taggel van becsomagolva, kinyerjük a tartalmat
   if (cleanedText.startsWith('<pre>') && cleanedText.endsWith('</pre>')) {
     cleanedText = cleanedText.slice(5, -6).trim()
   }
-  
+
   // Eltávolítjuk az esetleges további HTML tag-eket
   cleanedText = cleanedText.replace(/^<[^>]+>/, '').replace(/<[^>]+>$/, '').trim()
 
@@ -202,13 +202,13 @@ async function callApi(params: Record<string, string | number | undefined>): Pro
     // Előrejelzés hiány esetén ne dobjunk hibát, hanem jelezzük, hogy nincs adat
     const errorCode = typeof data.error === 'number' ? data.error : null
     const errorMessage = errorCode ? errorMessages[errorCode] : null
-    
+
     // Ha szöveges hibaüzenet van és tartalmazza az "forecast" szót, akkor nincs előrejelzés
     // Az error mező lehet szám vagy szöveg is
     const errorText = typeof data.error === 'string' ? data.error : ''
     const messageText = data.message || ''
     const combinedErrorText = (errorText + ' ' + messageText).toLowerCase()
-    const isForecastError = 
+    const isForecastError =
       errorCode === 16 || errorCode === 17 || errorCode === 18 ||
       combinedErrorText.includes('forecast') ||
       combinedErrorText.includes('no forecast')
@@ -251,17 +251,17 @@ export async function getVariables(): Promise<Variable[]> {
  */
 export async function getStations(): Promise<Station[]> {
   const data = await callApi({ view: 'getstations' })
-  
+
   // Az API válasz lehet {entries: [...]} formátumú vagy közvetlenül tömb
   if (Array.isArray(data)) {
     return data
   }
-  
+
   // Ha objektum, próbáljuk meg kinyerni az entries tömböt
   if (data && typeof data === 'object' && 'entries' in data && Array.isArray(data.entries)) {
     return data.entries
   }
-  
+
   // Ha üres objektum vagy más formátum, üres tömböt adunk vissza
   return []
 }
@@ -271,17 +271,17 @@ export async function getStations(): Promise<Station[]> {
  */
 export async function getWaters(): Promise<Water[]> {
   const data = await callApi({ view: 'getwaters' })
-  
+
   // Az API válasz lehet {entries: [...]} formátumú vagy közvetlenül tömb
   if (Array.isArray(data)) {
     return data
   }
-  
+
   // Ha objektum, próbáljuk meg kinyerni az entries tömböt
   if (data && typeof data === 'object' && 'entries' in data && Array.isArray(data.entries)) {
     return data.entries
   }
-  
+
   // Ha üres objektum vagy más formátum, üres tömböt adunk vissza
   return []
 }
@@ -325,9 +325,9 @@ export async function getMeasurements(params: {
 
   const data = await callApi(apiParams)
   console.log('getMeasurements API válasz:', data)
-  
+
   let entries: any[] = []
-  
+
   // Az API válasz lehet {entries: [...]} formátumú vagy közvetlenül tömb
   if (Array.isArray(data)) {
     entries = data
@@ -339,7 +339,7 @@ export async function getMeasurements(params: {
       entries = values[0]
     }
   }
-  
+
   // Szűrjük ki a null értékeket, majd konvertáljuk a string értékeket számokká
   return entries
     .filter((entry) => entry !== null && entry !== undefined)
@@ -348,9 +348,9 @@ export async function getMeasurements(params: {
       statid: typeof entry.statid === 'string' ? parseInt(entry.statid, 10) : entry.statid,
       measurements: Array.isArray(entry.measurements)
         ? entry.measurements.map((m: any) => ({
-            ...m,
-            value: typeof m.value === 'string' ? parseFloat(m.value) : m.value,
-          }))
+          ...m,
+          value: typeof m.value === 'string' ? parseFloat(m.value) : m.value,
+        }))
         : [],
     })) as MeasurementEntry[]
 }
@@ -389,7 +389,7 @@ export async function getNearestMeasurements(params: {
   }
 
   const data = await callApi(apiParams)
-  
+
   // Az API válasz {entries: [...]} formátumú, kinyerjük az első bejegyzést
   if (data && typeof data === 'object' && 'entries' in data && Array.isArray(data.entries) && data.entries.length > 0) {
     const entry = data.entries[0]
@@ -402,13 +402,13 @@ export async function getNearestMeasurements(params: {
       distance: typeof entry.distance === 'string' ? parseFloat(entry.distance) : entry.distance,
       measurements: Array.isArray(entry.measurements)
         ? entry.measurements.map((m: any) => ({
-            ...m,
-            value: typeof m.value === 'string' ? parseFloat(m.value) : m.value,
-          }))
+          ...m,
+          value: typeof m.value === 'string' ? parseFloat(m.value) : m.value,
+        }))
         : [],
     } as MeasurementEntry
   }
-  
+
   return null
 }
 
@@ -419,9 +419,9 @@ export async function getNearestMeasurements(params: {
 export async function getVariableStations(varid: number): Promise<StationVariable[]> {
   const data = await callApi({ view: 'getvarstat', varid })
   console.log('getVariableStations API válasz:', data)
-  
+
   let entries: any[] = []
-  
+
   // Az API válasz lehet {entries: [...]} formátumú vagy közvetlenül tömb
   if (Array.isArray(data)) {
     entries = data
@@ -433,7 +433,7 @@ export async function getVariableStations(varid: number): Promise<StationVariabl
       entries = values[0]
     }
   }
-  
+
   // Az API válaszban `stationid` van (nem `statid`) és `forecasted` stringként ("1" vagy "0")
   // Csak azokat az állomásokat adjuk vissza, ahol `forecasted === "1"`
   return entries
@@ -450,17 +450,17 @@ export async function getVariableStations(varid: number): Promise<StationVariabl
  */
 export async function getStationVariables(statid: number): Promise<VariableStation[]> {
   const data = await callApi({ view: 'getstatvar', statid })
-  
+
   // Az API válasz lehet {entries: [...]} formátumú vagy közvetlenül tömb
   if (Array.isArray(data)) {
     return data
   }
-  
+
   // Ha objektum, próbáljuk meg kinyerni az entries tömböt
   if (data && typeof data === 'object' && 'entries' in data && Array.isArray(data.entries)) {
     return data.entries
   }
-  
+
   // Ha üres objektum vagy más formátum, üres tömböt adunk vissza
   return []
 }
@@ -475,11 +475,15 @@ export async function getForecast(params: {
   varid: number
   statid: number
   extended?: boolean
+  fromdate?: string
+  todate?: string
 }): Promise<ForecastEntry[]> {
   const apiParams: Record<string, string | number | undefined> = {
     view: 'getfc',
     varid: params.varid,
     statid: params.statid,
+    fromdate: params.fromdate,
+    todate: params.todate,
   }
 
   if (params.extended) {
@@ -487,26 +491,26 @@ export async function getForecast(params: {
   }
 
   const data = await callApi(apiParams)
-  
+
   let entries: any[] = []
-  
+
   // Az API válasz lehet {entries: [...]} formátumú vagy közvetlenül tömb
   if (Array.isArray(data)) {
     entries = data
   } else if (data && typeof data === 'object' && 'entries' in data && Array.isArray(data.entries)) {
     entries = data.entries
   }
-  
+
   // Konvertáljuk az előrejelzési értékeket számokká
   return entries.map((entry) => ({
     ...entry,
     statid: typeof entry.statid === 'string' ? parseInt(entry.statid, 10) : entry.statid,
     forecasts: Array.isArray(entry.forecasts)
       ? entry.forecasts.map((f: any) => ({
-          ...f,
-          value: typeof f.value === 'string' ? parseFloat(f.value) : f.value,
-          conf: typeof f.conf === 'string' ? parseFloat(f.conf) : (f.conf !== undefined ? f.conf : undefined),
-        }))
+        ...f,
+        value: typeof f.value === 'string' ? parseFloat(f.value) : f.value,
+        conf: typeof f.conf === 'string' ? parseFloat(f.conf) : (f.conf !== undefined ? f.conf : undefined),
+      }))
       : [],
   }))
 }

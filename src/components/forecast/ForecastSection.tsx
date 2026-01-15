@@ -1,6 +1,8 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useState } from 'react'
 import type { ForecastEntry } from '../../api/water'
+import type { WeatherData } from '../../api/weather'
 import { WaterLevelChart, type ChartPoint } from './WaterLevelChart'
+import { WeatherForecastChart } from './WeatherForecastChart'
 
 interface ForecastSectionProps {
     isOpen: boolean
@@ -9,6 +11,9 @@ interface ForecastSectionProps {
     pastData: { date: Date | string, value: number }[] | null
     currentLevel: number | null
     locationName: string
+    isLoading?: boolean
+    debugStatus?: string
+    weatherData?: WeatherData | null
 }
 
 export const ForecastSection: React.FC<ForecastSectionProps> = ({
@@ -17,8 +22,12 @@ export const ForecastSection: React.FC<ForecastSectionProps> = ({
     forecastEntry,
     pastData,
     currentLevel,
-    locationName
+    locationName,
+    isLoading,
+    debugStatus,
+    weatherData
 }) => {
+    const [activeTab, setActiveTab] = useState<'water' | 'weather'>('water')
 
     // --- Data Processing Logic (extracted from App.tsx) ---
     const chartData = useMemo<ChartPoint[]>(() => {
@@ -50,45 +59,45 @@ export const ForecastSection: React.FC<ForecastSectionProps> = ({
             })
         }
 
-        // 3. Forecasts (Next days)
+        // 3. Forecasts (Explicit Logic for Next 3 Days)
         if (forecastEntry && forecastEntry.forecasts) {
-            // Filter logic from App.tsx to deduplicate and pick noon values
-            // Use explicit type Array<typeof forecastEntry.forecasts[0]>
-            const dailyForecasts = forecastEntry.forecasts.reduce<Array<typeof forecastEntry.forecasts[0]>>((acc, forecast) => {
-                const date = new Date(forecast.date)
-                const dateKey = date.toISOString().split('T')[0]
-                const existing = acc.find((f) => {
-                    const fDate = new Date(f.date)
-                    return fDate.toISOString().split('T')[0] === dateKey
-                })
+            const today = new Date()
+            const todayStr = today.toDateString()
+            const futureMap = new Map<string, typeof forecastEntry.forecasts[0]>()
 
-                if (!existing) {
-                    acc.push(forecast)
+            forecastEntry.forecasts.forEach((forecast) => {
+                const d = new Date(forecast.date)
+                // Skip invalid dates
+                if (isNaN(d.getTime())) return
+
+                const dStr = d.toDateString()
+
+                // Skip today and past dates completely
+                // We rely on currentLevel for today's data
+                if (d < today || dStr === todayStr) {
+                    return
+                }
+
+                // For future days, pick the measurement closest to noon (12:00)
+                const currentBest = futureMap.get(dStr)
+                if (!currentBest) {
+                    futureMap.set(dStr, forecast)
                 } else {
-                    // Pick closest to noon
-                    const existingHour = new Date(existing.date).getHours()
-                    const currentHour = date.getHours()
-                    const existingDiff = Math.abs(existingHour - 12)
-                    const currentDiff = Math.abs(currentHour - 12)
-                    if (currentDiff < existingDiff) {
-                        const index = acc.indexOf(existing)
-                        acc[index] = forecast
+                    const bestDate = new Date(currentBest.date)
+                    const bestDiff = Math.abs(bestDate.getHours() - 12)
+                    const currDiff = Math.abs(d.getHours() - 12)
+                    if (currDiff < bestDiff) {
+                        futureMap.set(dStr, forecast)
                     }
                 }
-                return acc
-            }, [])
+            })
 
-            // Filter future only
-            const todayMidnight = new Date()
-            todayMidnight.setHours(0, 0, 0, 0)
+            // Sort by date and take the first 3 days
+            const sortedFutures = Array.from(futureMap.values())
+                .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+                .slice(0, 3)
 
-            const futureForecasts = dailyForecasts.filter(f => {
-                const d = new Date(f.date)
-                d.setHours(0, 0, 0, 0)
-                return d.getTime() > todayMidnight.getTime()
-            }).slice(0, 5) // Next 5 days? App.tsx showed 3. Let's show up to 5 in modal.
-
-            futureForecasts.forEach(f => {
+            sortedFutures.forEach((f) => {
                 points.push({
                     date: new Date(f.date),
                     value: f.value,
@@ -165,54 +174,89 @@ export const ForecastSection: React.FC<ForecastSectionProps> = ({
                 </div>
 
                 {/* Content */}
-                <div style={{ padding: '1.5rem', overflowY: 'auto' }}>
-
-                    {/* Chart Container */}
-                    <div style={{
-                        marginBottom: '2rem',
-                        backgroundColor: '#FFFFF7',
-                        padding: '1rem',
-                        borderRadius: '0.75rem',
-                        border: '1px solid #e2e8f0'
-                    }}>
-                        <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem', color: '#334155' }}>Grafikon</h3>
-                        <WaterLevelChart points={chartData} />
+                {/* Content */}
+                {isLoading ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '3rem', flex: 1 }}>
+                        <div style={{ border: '3px solid #f3f3f3', borderTop: '3px solid #3b82f6', borderRadius: '50%', width: '30px', height: '30px', animation: 'spin 1s linear infinite', marginBottom: '1rem' }}></div>
+                        <p style={{ color: '#64748b' }}>Adatok betöltése...</p>
+                        <style>{`
+                            @keyframes spin {
+                                0% { transform: rotate(0deg); }
+                                100% { transform: rotate(360deg); }
+                            }
+                        `}</style>
                     </div>
+                ) : (
+                    <div style={{ padding: '1.5rem', overflowY: 'auto' }}>
 
-                    {/* Simple Table */}
-                    <div>
-                        <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem', color: '#334155' }}>Részletes adatok</h3>
-                        <div style={{ overflowX: 'auto' }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-                                <thead>
-                                    <tr style={{ borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
-                                        <th style={{ padding: '0.75rem' }}>Dátum</th>
-                                        <th style={{ padding: '0.75rem' }}>Vízállás (cm)</th>
-                                        <th style={{ padding: '0.75rem' }}>Tipus</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {chartData.map((row, idx) => (
-                                        <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                                            <td style={{ padding: '0.75rem', fontWeight: 500 }}>
-                                                {row.date.toLocaleDateString('hu-HU', { weekday: 'short', month: 'short', day: 'numeric' })}
-                                            </td>
-                                            <td style={{ padding: '0.75rem', fontWeight: 700, color: '#3b82f6' }}>
-                                                {row.value.toFixed(0)}
-                                            </td>
-                                            <td style={{ padding: '0.75rem' }}>
-                                                {row.isPast && <span style={{ padding: '0.25rem 0.5rem', borderRadius: '4px', backgroundColor: '#f1f5f9', color: '#64748b', fontSize: '0.75rem' }}>Múlt</span>}
-                                                {row.isToday && <span style={{ padding: '0.25rem 0.5rem', borderRadius: '4px', backgroundColor: '#d1fae5', color: '#059669', fontSize: '0.75rem', fontWeight: 700 }}>MA</span>}
-                                                {row.isFuture && <span style={{ padding: '0.25rem 0.5rem', borderRadius: '4px', backgroundColor: '#fef3c7', color: '#d97706', fontSize: '0.75rem' }}>Előrejelzés</span>}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                        {/* Tabs */}
+                        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.5rem' }}>
+                            <button
+                                onClick={() => setActiveTab('water')}
+                                style={{
+                                    padding: '0.5rem 1rem',
+                                    borderRadius: '0.5rem',
+                                    border: 'none',
+                                    backgroundColor: activeTab === 'water' ? '#3b82f6' : 'transparent',
+                                    color: activeTab === 'water' ? '#ffffff' : '#64748b',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s'
+                                }}
+                            >
+                                💧 Vízállás
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('weather')}
+                                style={{
+                                    padding: '0.5rem 1rem',
+                                    borderRadius: '0.5rem',
+                                    border: 'none',
+                                    backgroundColor: activeTab === 'weather' ? '#3b82f6' : 'transparent',
+                                    color: activeTab === 'weather' ? '#ffffff' : '#64748b',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s'
+                                }}
+                            >
+                                🌤️ Időjárás
+                            </button>
                         </div>
+
+                        {/* Chart Container */}
+                        <div style={{
+                            marginBottom: '2rem',
+                            backgroundColor: '#FFFFF7',
+                            padding: '1rem',
+                            borderRadius: '0.75rem',
+                            border: '1px solid #e2e8f0'
+                        }}>
+                            <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem', color: '#334155' }}>
+                                {activeTab === 'water' ? 'Vízállás Grafikon' : 'Időjárás Előrejelzés'}
+                            </h3>
+
+                            {activeTab === 'water' ? (
+                                <WaterLevelChart points={chartData} />
+                            ) : (
+                                <WeatherForecastChart forecasts={weatherData?.forecasts || []} />
+                            )}
+                        </div>
+
+
                     </div>
+
+
+                )}
+
+                {/* DEBUG INFO - Temporary */}
+                <div style={{ padding: '0.5rem', fontSize: '0.7rem', color: '#94a3b8', textAlign: 'center', borderTop: '1px solid #f1f5f9' }}>
+                    Debug: R:{forecastEntry?.forecasts?.length || 0} /
+                    F:{chartData.filter(p => p.isFuture).length}
+                    ({forecastEntry?.forecasts?.[0]?.date || 'n/a'})
+                    <br />
+                    Status: {debugStatus || 'No status'}
                 </div>
             </div>
-        </div>
+        </div >
     )
 }

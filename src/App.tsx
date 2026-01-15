@@ -26,6 +26,7 @@ import {
 } from './api/water.ts'
 import {
   addRecord,
+  updateRecord,
   deleteRecord,
   listenToRecords,
   type Coordinates,
@@ -90,6 +91,7 @@ function App() {
   const [forecastData, setForecastData] = useState<ForecastEntry[] | null>(null)
   const [forecastLoading, setForecastLoading] = useState(false)
   const [forecastError, setForecastError] = useState<string | null>(null)
+  const [forecastStationId, setForecastStationId] = useState<number | null>(null)
   const [pastWaterLevelData, setPastWaterLevelData] = useState<Array<{ entry: MeasurementEntry; measurement: Measurement }> | null>(null)
   const [_pastWaterLevelLoading, setPastWaterLevelLoading] = useState(false)
   const [_pastWaterLevelError, setPastWaterLevelError] = useState<string | null>(null)
@@ -140,7 +142,9 @@ function App() {
   const [showStatistics, setShowStatistics] = useState<boolean>(false)
   const [showLogbook, setShowLogbook] = useState<boolean>(false)
   const [showForecast, setShowForecast] = useState<boolean>(false)
+  const [debugStatus, setDebugStatus] = useState<string>('')
   const [deleteConfirmRecordId, setDeleteConfirmRecordId] = useState<string | null>(null)
+  const [editingRecordId, setEditingRecordId] = useState<string | null>(null)
 
 
   // Az első hal 3 másodperc késleltetéssel úszik be
@@ -520,6 +524,38 @@ function App() {
     setLocationSuggestionError(null)
   }
 
+
+
+  const handleStartEditing = (record: LocationRecord) => {
+    setEditingRecordId(record.id)
+    setLocation(record.locationName)
+    setLocationQuery(record.locationQuery)
+    if (record.coordinates) {
+      setCoordinates(record.coordinates)
+    }
+
+    // Halak betöltése
+    if (record.caughtFish) {
+      if (Array.isArray(record.caughtFish)) {
+        // Ha tömb (régi formátum), konvertáljuk objeltummá (1 db mindegyikből)
+        const fishObj: Record<string, number> = {}
+        record.caughtFish.forEach(fish => {
+          fishObj[fish] = 1
+        })
+        setSelectedFish(fishObj)
+      } else {
+        // Ha már objektum
+        setSelectedFish(record.caughtFish)
+      }
+    } else {
+      setSelectedFish({})
+    }
+
+    setShowLogbook(false)
+    // NEM állítjuk be a selectedRecordId-t, hogy ne nyíljon meg a részletes nézet
+    // setSelectedRecordId(null)
+  }
+
   const handleSave = async () => {
     if (!user) {
       setSaveMessage('Előbb jelentkezz be Google fiĂłkkal!')
@@ -541,7 +577,24 @@ function App() {
     setSaveMessage('Mentés folyamatbanâ€¦')
 
     try {
-      await saveLocation(undefined, Object.keys(selectedFish).length > 0 ? selectedFish : undefined)
+      if (editingRecordId) {
+        await updateRecord(user.uid, editingRecordId, {
+          locationName: location,
+          locationQuery: locationQuery || location,
+          coordinates: coordinates,
+          caughtFish: Object.keys(selectedFish).length > 0 ? selectedFish : undefined
+        })
+        setSaveMessage('Rekord frissítve!')
+        setMessage(`Rekord frissítve: "${location}".`)
+        // Reset editing state
+        setEditingRecordId(null)
+        setLocation('')
+        setLocationQuery('')
+        setCoordinates(undefined)
+      } else {
+        await saveLocation(undefined, Object.keys(selectedFish).length > 0 ? selectedFish : undefined)
+      }
+
       setSelectedFish({}) // Reset a következő mentéshez
       setShowFishPopup(false) // Csak sikeres mentés után zárjuk be a popup-ot
     } catch (error) {
@@ -555,7 +608,16 @@ function App() {
 
   const handleFishPopupCancel = () => {
     setShowFishPopup(false)
-    setSelectedFish({})
+    // Ha volt szerkesztés folyamatban, de mégsem mentünk, mit tegyünk?
+    // Egyelőre hagyjuk benne az adatokat a form-ban, hátha csak véletlen volt a mégse.
+    // De a szerkesztési módot ne töröljük? Vagy de?
+    // Ha bezárja a popup-ot, attól még szerkesztheti tovább a főképernyőn.
+    // De ha teljesen elveti?
+    // Egyelőre nem reseteljük az editingRecordId-t, csak ha explicit kilépne vagy mentene.
+    // De a selectedFish-t sem reseteljük, ha szerkesztés van.
+    if (!editingRecordId) {
+      setSelectedFish({})
+    }
   }
 
   const toggleFish = (fish: string) => {
@@ -633,7 +695,7 @@ function App() {
       setWeatherLoading(true)
       setWeatherError(null)
       try {
-        const data = await fetchWeather(query)
+        const data = await fetchWeather(query, 3)
         if (!cancelled) {
           setWeatherData(data)
         }
@@ -924,7 +986,21 @@ function App() {
     const loadForecast = async () => {
       setForecastLoading(true)
       setForecastError(null)
+      setDebugStatus('Start... ')
+      setDebugStatus('Start... ')
+
+      const currentLat = waterData.lat || coordinates?.lat
+      const currentLon = waterData.lon || coordinates?.lon
+
+      if (!currentLat || !currentLon) {
+        setForecastData(null)
+        setForecastLoading(false)
+        setDebugStatus('No Coords')
+        return
+      }
+
       try {
+        setDebugStatus(`Check Origin: ${waterData.statid}`)
         // Először prĂłbáljuk meg lekérni az adott állomás előrejelzését
         const data = await getForecast({
           statid: waterData.statid,
@@ -934,11 +1010,13 @@ function App() {
         if (!cancelled) {
           setForecastData(data)
           setForecastStationId(waterData.statid) // Az eredeti állomás
+          setDebugStatus(`Success Origin: ${waterData.statid}`)
         }
       } catch (error) {
         if (!cancelled) {
           // Ha nincs előrejelzés az adott állomáson, keressük meg a legközelebbit
           if (error instanceof Error && error.message === 'NO_FORECAST') {
+            setDebugStatus('No forecast (Origin). fallback...')
             try {
               // Lekérjük az összes állomás részletes adatait
               const allStations = await getStations()
@@ -960,29 +1038,48 @@ function App() {
                 // Folytatjuk közvetlenül
               }
 
-              // Ha nincs eredmény a getVariableStations-bĂłl, prĂłbáljuk meg közvetlenül az összes állomásbĂłl
+              // Ha nincs eredmény a getVariableStations-ből, keressük a legközelebbi állomásokat (Fallback)
               if (stationsWithForecast.length === 0) {
-                // PrĂłbáljuk meg az első 10 állomást (hatékonyság miatt)
-                const stationsToTry = allStations.slice(0, 10)
+                // Rendezzük távolság szerint (ehhez kell a currentLat/Lon)
+                const sortedStations = allStations.map(s => ({
+                  ...s,
+                  dist: calculateDistance(currentLat, currentLon, s.lat, s.lon)
+                })).sort((a, b) => a.dist - b.dist)
+
+                // Próbáljuk meg a legközelebbi 10 állomást (fontossági sorrendben)
+                const stationsToTry = sortedStations.slice(0, 10)
+
+                let foundFallback = false
                 for (const station of stationsToTry) {
+                  setDebugStatus(`Checking ${station.statid}...`)
                   try {
                     const testForecast = await getForecast({
                       statid: station.statid,
                       varid: waterLevelVarId,
                       extended: true,
                     })
-                    if (testForecast && testForecast.length > 0 && testForecast[0]?.forecasts && testForecast[0].forecasts.length > 0) {
+                    // Csak akkor fogadjuk el, ha van VALÓDI jövőbeli adat
+                    if (testForecast && testForecast.length > 0 &&
+                      testForecast[0]?.forecasts && testForecast[0].forecasts.length > 0) {
                       stationsWithForecast.push(station)
-                      break // Csak az elsőt keressük meg
+                      setForecastData(testForecast) // DIRECT SET
+                      setForecastStationId(station.statid)
+                      setDebugStatus(`Found at ${station.statid}`)
+                      foundFallback = true
+                      break
                     }
                   } catch (testError) {
-                    // Folytatjuk a következő állomással
                     continue
                   }
+                }
+
+                if (!foundFallback) {
+                  setDebugStatus('Fallback: No data (10 tried)')
                 }
               }
 
               if (stationsWithForecast.length === 0) {
+                if (!cancelled) setDebugStatus('No stations w/ forecast')
                 // Nincs egyetlen állomás sem előrejelzéssel
                 setForecastData(null)
                 setForecastError(null)
@@ -990,16 +1087,9 @@ function App() {
                 return
               }
 
-              // Számoljuk ki a távolságot minden állomástĂłl
-              const currentLat = waterData.lat || coordinates?.lat
-              const currentLon = waterData.lon || coordinates?.lon
+              // Számoljuk ki a távolságot minden állomástól
+              // currentLat/Link már definiálva van fent
 
-              if (!currentLat || !currentLon) {
-                setForecastData(null)
-                setForecastError(null)
-                setForecastStationId(null)
-                return
-              }
 
               // Keressük meg a legközelebbi állomást
               let nearestStation = stationsWithForecast[0]
@@ -1024,8 +1114,10 @@ function App() {
                 setForecastData(nearestForecast)
                 setForecastStationId(nearestStation.statid)
                 setForecastError(null)
+                setDebugStatus(`Success Nearest: ${nearestStation.statid}`)
               }
             } catch (fallbackError) {
+              setDebugStatus(`Fallback Err: ${fallbackError}`)
               if (!cancelled) {
                 setForecastData(null)
                 setForecastError(null)
@@ -1033,7 +1125,9 @@ function App() {
               }
             }
           } else {
-            setForecastError(`Nem sikerült lekérni az előrejelzést: ${error instanceof Error ? error.message : 'Ismeretlen hiba'}`)
+            const errMsg = error instanceof Error ? error.message : 'Unknown'
+            setForecastError(`Nem sikerült lekérni az előrejelzést: ${errMsg}`)
+            setDebugStatus(`Error: ${errMsg}`)
             setForecastStationId(null)
           }
         }
@@ -1043,6 +1137,7 @@ function App() {
         }
       }
     }
+
 
     void loadForecast()
 
@@ -2443,7 +2538,12 @@ function App() {
             {/* Előrejelzés - Mindig látható ha be van lépve */}
             <button
               type="button"
-              onClick={() => setShowForecast(true)}
+              onClick={() => {
+                setShowForecast(true)
+                if ((!weatherData && !forecastData) || !coordinates) {
+                  handleUseCurrentLocation()
+                }
+              }}
               style={{
                 padding: `clamp(0.5rem, 1.5vw, 0.75rem) clamp(1rem, 2.5vw, 1.25rem)`,
                 borderRadius: '0.25rem',
@@ -3093,6 +3193,9 @@ function App() {
                 pastData={processedPastWaterLevelData}
                 currentLevel={currentWaterLevel}
                 locationName={location}
+                isLoading={forecastLoading || weatherLoading || geolocationLoading}
+                debugStatus={debugStatus}
+                weatherData={weatherData}
               />
 
 
@@ -3148,7 +3251,7 @@ function App() {
                           Részletes Adatok
                         </h2>
                         <p style={{ margin: '0.25rem 0 0 0', color: '#64748b', fontSize: '0.85rem' }}>
-                          {selectedRecord.date.toLocaleDateString('hu-HU')} • {getLocationWithoutCounty(selectedRecord.locationName)}
+                          {selectedRecord.date} • {getLocationWithoutCounty(selectedRecord.locationName)}
                         </p>
                       </div>
                       <button
@@ -4332,7 +4435,7 @@ function App() {
                     e.currentTarget.style.backgroundColor = '#14b8a6'
                   }}
                 >
-                  Mentés
+                  {editingRecordId ? 'Frissítés' : 'Mentés'}
                 </button>
               </div>
             </div>
