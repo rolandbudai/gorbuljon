@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Bar } from 'react-chartjs-2'
 import {
     Chart as ChartJS,
@@ -30,6 +30,15 @@ interface FishSuccessViewProps {
 
 export function FishSuccessView({ records }: FishSuccessViewProps) {
     const [selectedDataType, setSelectedDataType] = useState<DataType>('waterLevel')
+    const [windowWidth, setWindowWidth] = useState(window.innerWidth)
+
+    useEffect(() => {
+        const handleResize = () => setWindowWidth(window.innerWidth)
+        window.addEventListener('resize', handleResize)
+        return () => window.removeEventListener('resize', handleResize)
+    }, [])
+
+    const isMobile = windowWidth <= 768
 
     const chartData = useMemo(() => {
         const data = aggregateCatchesByEnvironment(records, selectedDataType)
@@ -115,8 +124,10 @@ export function FishSuccessView({ records }: FishSuccessViewProps) {
                     color: '#1e293b',
                 },
                 ticks: {
-                    font: { size: 12 },
+                    font: { size: isMobile ? 10 : 12 },
                     color: '#64748b',
+                    maxRotation: isMobile ? 45 : 0,
+                    minRotation: isMobile ? 45 : 0,
                 },
                 grid: {
                     display: false,
@@ -142,7 +153,7 @@ export function FishSuccessView({ records }: FishSuccessViewProps) {
                 },
             },
         },
-    }), [selectedDataType, chartData.categories])
+    }), [selectedDataType, chartData.categories, isMobile])
 
     const dataTypeOptions = getAllDataTypes()
 

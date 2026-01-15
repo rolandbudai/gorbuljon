@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Radar } from 'react-chartjs-2'
 import {
     Chart as ChartJS,
@@ -29,6 +29,15 @@ interface FishTypeAnalysisProps {
 }
 
 export function FishTypeAnalysis({ records }: FishTypeAnalysisProps) {
+    const [windowWidth, setWindowWidth] = useState(window.innerWidth)
+
+    useEffect(() => {
+        const handleResize = () => setWindowWidth(window.innerWidth)
+        window.addEventListener('resize', handleResize)
+        return () => window.removeEventListener('resize', handleResize)
+    }, [])
+
+    const isMobile = windowWidth <= 768
     const fishTypes = useMemo(() => getAllFishTypes(records), [records])
     const [selectedFish, setSelectedFish] = useState<string>(fishTypes[0] || '')
 
@@ -42,6 +51,7 @@ export function FishTypeAnalysis({ records }: FishTypeAnalysisProps) {
             return {
                 labels: [],
                 datasets: [],
+                preferences: [],
             }
         }
 
@@ -111,12 +121,12 @@ export function FishTypeAnalysis({ records }: FishTypeAnalysisProps) {
                     backdropColor: 'rgba(255, 255, 255, 0.8)',
                     color: '#64748b',
                     font: {
-                        size: 11,
+                        size: isMobile ? 9 : 11,
                     },
                 },
                 pointLabels: {
                     font: {
-                        size: 12,
+                        size: isMobile ? 10 : 12,
                         weight: 600,
                     },
                     color: '#1e293b',
@@ -131,7 +141,7 @@ export function FishTypeAnalysis({ records }: FishTypeAnalysisProps) {
                 },
             },
         },
-    }), [chartData.preferences, selectedFish])
+    }), [chartData.preferences, selectedFish, isMobile])
 
     if (fishTypes.length === 0) {
         return (
