@@ -2481,485 +2481,564 @@ function App() {
             <p style={{ color: '#dc2626' }}>{weatherError}</p>
           ) : weatherData ? (
             <div
-              ref={dataCardRef}
-              className="data-card"
+              className="statistics-modal-overlay"
               style={{
-                height: '79.2vh',
-                maxHeight: '79.2vh',
-                zIndex: 10,
+                zIndex: 2000,
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: 'rgba(15, 23, 42, 0.7)',
+                backdropFilter: 'blur(5px)',
+              }}
+              onClick={() => {
+                setWeatherData(null)
+                setWaterData(null)
+                setForecastData(null)
+                setLocationQuery('') // Opcionális: mező ürítése
               }}
             >
-              {/* Front side - Időjárási adatok */}
               <div
-                ref={cardFrontRef}
-                className="card-front"
+                className="statistics-modal-content"
+                style={{
+                  maxWidth: '650px',
+                  padding: '0',
+                  width: '100%',
+                  backgroundColor: '#FFFFF7',
+                  borderRadius: '1rem',
+                  maxHeight: '90vh',
+                  overflowY: 'auto',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                  position: 'relative'
+                }}
+                onClick={(e) => e.stopPropagation()}
               >
-                {/* Card Header - Kiemelt fejléc dátum, helyszín és vízterülettel */}
-                <div className="data-card-header">
-                  {/* Vízterület - bal oldal */}
-                  {waterData?.water && (
-                    <div className="card-header-water">
-                      <span className="water-icon">🌊</span>
-                      <div className="card-header-water-info">
-                        <span className="card-header-water-name">{waterData.water}</span>
-                        {waterData.station && (
-                          <span
-                            className="info-badge-circle"
-                            onMouseEnter={(e) => {
-                              const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
-                              if (tooltip) {
-                                tooltip.style.opacity = '1'
-                                tooltip.style.visibility = 'visible'
-                                adjustTooltipPosition(tooltip, e.currentTarget, true)
-                              }
-                            }}
-                            onMouseLeave={(e) => {
-                              const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
-                              if (tooltip) {
-                                tooltip.style.opacity = '0'
-                                tooltip.style.visibility = 'hidden'
-                              }
-                            }}
-                          >
-                            i
-                            <span
-                              data-tooltip
-                              style={{
-                                position: 'absolute',
-                                top: '50%',
-                                left: '100%',
-                                transform: 'translateY(-50%)',
-                                marginLeft: '5px',
-                                padding: '6px 10px',
-                                backgroundColor: '#1e293b',
-                                color: '#ffffff',
-                                borderRadius: '4px',
-                                fontSize: '12px',
-                                whiteSpace: 'nowrap',
-                                zIndex: 1000,
-                                pointerEvents: 'none',
-                                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
-                                opacity: 0,
-                                visibility: 'hidden',
-                                transition: 'opacity 0.2s, visibility 0.2s',
-                              }}
-                            >
-                              Legközelebbi mérőállomás: {waterData.station}
-                            </span>
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Helyszín - közép */}
-                  <div className="card-header-location">
-                    <h3>
-                      {weatherData.locationName}
-                    </h3>
+                {/* Modal Header */}
+                <div style={{
+                  padding: '1.25rem 1.5rem',
+                  borderBottom: '1px solid #e2e8f0',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  backgroundColor: '#f8fafc',
+                  borderTopLeftRadius: '1rem',
+                  borderTopRightRadius: '1rem',
+                }}>
+                  <div>
+                    <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a', fontWeight: 700 }}>
+                      Aktuális Adatok
+                    </h2>
+                    <p style={{ margin: '0.25rem 0 0 0', color: '#64748b', fontSize: '0.85rem' }}>
+                      {new Date().toLocaleDateString('hu-HU')} • {location}
+                    </p>
                   </div>
-
-                  {/* Koordináták - jobb oldal */}
-                  {coordinates && (
-                    <div className="card-header-coordinates">
-                      {coordinates.lat.toFixed(6)}, {coordinates.lon.toFixed(6)}
-                    </div>
-                  )}
-                </div>
-
-                {/* Save Button inside Data Card */}
-                <div style={{ marginBottom: '1rem', marginTop: '0.5rem' }}>
                   <button
-                    type="button"
-                    onClick={handleSave}
-                    disabled={isSaving || isFormDisabled || location.trim().length === 0}
-                    className="btn-save-primary"
+                    onClick={() => {
+                      setWeatherData(null)
+                      setWaterData(null)
+                      setForecastData(null)
+                    }}
+                    className="statistics-close-btn"
+                    aria-label="Bezárás"
                   >
-                    {isSaving ? (
-                      <>
-                        <span className="animate-spin">⏳</span> Mentés folyamatban…
-                      </>
-                    ) : (
-                      <>
-                        <span style={{ fontSize: '1.2em' }}>💾</span> Mentés
-                      </>
-                    )}
+                    ×
                   </button>
                 </div>
-                {/* Vízállás és vízhőmérséklet egymás mellett keretben */}
-                <div className="data-card-grid">
-                  {/* Vízállás */}
-                  {waterLoading ? (
-                    <div className="data-field"
+
+                {/* Modal Body matches Saved Card body style */}
+                <div style={{ padding: '1.5rem', overflowY: 'auto', backgroundColor: '#f1f5f9' }}>
+                  <div
+                    ref={dataCardRef}
+                    className="data-card"
+                    style={{
+                      height: 'auto',
+                      minHeight: 'auto',
+                      marginTop: 0,
+                      marginBottom: 0,
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                      background: 'white'
+                    }}
+                  >
+                    {/* Front side - Időjárási adatok */}
+                    <div
+                      ref={cardFrontRef}
+                      className="card-front"
                     >
-                      <div className="data-field-label">
-                        <span className="data-field-icon">💧</span>
-                        Vízállás
-                      </div>
-                      <div className="data-field-label">adatok betöltéseâ€¦</div>
-                    </div>
-                  ) : waterData?.measurements && waterData.measurements.length > 0 ? (() => {
-                    const waterValue = waterData.measurements[waterData.measurements.length - 1].value
-                    const waterLevel = getWaterLevelLevel(waterValue)
-                    const waterVariantClass = getVariantClass(waterLevel, 'water')
-                    const waterDescription = getLevelDescription(waterLevel, 'water')
-                    return (
-                      <div className={`data-field ${waterVariantClass} `}>
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <div className="data-field-label" >
-                            <span className="data-field-icon">💧</span>
-                            Vízállás
+                      {/* Card Header - Kiemelt fejléc dátum, helyszín és vízterülettel */}
+                      <div className="data-card-header">
+                        {/* Vízterület - bal oldal */}
+                        {waterData?.water && (
+                          <div className="card-header-water">
+                            <span className="water-icon">🌊</span>
+                            <div className="card-header-water-info">
+                              <span className="card-header-water-name">{waterData.water}</span>
+                              {waterData.station && (
+                                <span
+                                  className="info-badge-circle"
+                                  onMouseEnter={(e) => {
+                                    const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
+                                    if (tooltip) {
+                                      tooltip.style.opacity = '1'
+                                      tooltip.style.visibility = 'visible'
+                                      adjustTooltipPosition(tooltip, e.currentTarget, true)
+                                    }
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
+                                    if (tooltip) {
+                                      tooltip.style.opacity = '0'
+                                      tooltip.style.visibility = 'hidden'
+                                    }
+                                  }}
+                                >
+                                  i
+                                  <span
+                                    data-tooltip
+                                    style={{
+                                      position: 'absolute',
+                                      top: '50%',
+                                      left: '100%',
+                                      transform: 'translateY(-50%)',
+                                      marginLeft: '5px',
+                                      padding: '6px 10px',
+                                      backgroundColor: '#1e293b',
+                                      color: '#ffffff',
+                                      borderRadius: '4px',
+                                      fontSize: '12px',
+                                      whiteSpace: 'nowrap',
+                                      zIndex: 1000,
+                                      pointerEvents: 'none',
+                                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+                                      opacity: 0,
+                                      visibility: 'hidden',
+                                      transition: 'opacity 0.2s, visibility 0.2s',
+                                    }}
+                                  >
+                                    Legközelebbi mérőállomás: {waterData.station}
+                                  </span>
+                                </span>
+                              )}
+                            </div>
                           </div>
-                          <div className="data-field-description">{waterDescription}</div>
+                        )}
+
+                        {/* Helyszín - közép */}
+                        <div className="card-header-location">
+                          <h3>
+                            {weatherData.locationName}
+                          </h3>
                         </div>
-                        <div className="flex-row-center">
-                          <div className="data-field-value" >
-                            {waterValue.toFixed(1)}
+
+                        {/* Koordináták - jobb oldal */}
+                        {coordinates && (
+                          <div className="card-header-coordinates">
+                            {coordinates.lat.toFixed(6)}, {coordinates.lon.toFixed(6)}
                           </div>
-                          <div className="data-field-label" >{waterData.unit || 'cm'}</div>
-                          <span
-                            style={{
-                              position: 'relative',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              width: '14px',
-                              height: '14px',
-                              borderRadius: '50%',
-                              backgroundColor: '#94a3b8',
-                              color: '#ffffff',
-                              fontSize: '0.625rem',
-                              fontWeight: 600,
-                              cursor: 'pointer',
-                              marginLeft: 'auto',
-                            }}
-                            onMouseEnter={(e) => {
-                              const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
-                              if (tooltip) {
-                                tooltip.style.opacity = '1'
-                                tooltip.style.visibility = 'visible'
-                                // Vízállás és vízhőmérséklet tooltip-jei balra jelennek meg
-                                adjustTooltipPosition(tooltip, e.currentTarget, true)
-                              }
-                            }}
-                            onMouseLeave={(e) => {
-                              const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
-                              if (tooltip) {
-                                tooltip.style.opacity = '0'
-                                tooltip.style.visibility = 'hidden'
-                              }
-                            }}
+                        )}
+                      </div>
+
+                      {/* Save Button inside Data Card */}
+                      <div style={{ marginBottom: '1rem', marginTop: '0.5rem' }}>
+                        <button
+                          type="button"
+                          onClick={handleSave}
+                          disabled={isSaving || isFormDisabled || location.trim().length === 0}
+                          className="btn-save-primary"
+                        >
+                          {isSaving ? (
+                            <>
+                              <span className="animate-spin">⏳</span> Mentés folyamatban…
+                            </>
+                          ) : (
+                            <>
+                              <span style={{ fontSize: '1.2em' }}>💾</span> Mentés
+                            </>
+                          )}
+                        </button>
+                      </div>
+                      {/* Vízállás és vízhőmérséklet egymás mellett keretben */}
+                      <div className="data-card-grid">
+                        {/* Vízállás */}
+                        {waterLoading ? (
+                          <div className="data-field"
                           >
-                            i
-                            <span
-                              data-tooltip
-                              style={{
-                                position: 'absolute',
-                                top: '50%',
-                                right: '100%',
-                                left: 'auto',
-                                transform: 'translateY(-50%)',
-                                marginRight: '5px',
-                                marginLeft: '0',
-                                padding: '6px 10px',
-                                backgroundColor: '#1e293b',
-                                color: '#ffffff',
-                                borderRadius: '4px',
-                                fontSize: '12px',
-                                whiteSpace: 'nowrap',
-                                zIndex: 1000,
-                                pointerEvents: 'none',
-                                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
-                                opacity: 0,
-                                visibility: 'hidden',
-                                transition: 'opacity 0.2s, visibility 0.2s',
-                              }}
-                            >
-                              Mérés dátuma: {new Date(waterData.measurements[waterData.measurements.length - 1].date).toLocaleString('hu-HU')}
-                            </span>
-                          </span>
-                        </div>
-                      </div>
-                    )
-                  })() : null}
+                            <div className="data-field-label">
+                              <span className="data-field-icon">💧</span>
+                              Vízállás
+                            </div>
+                            <div className="data-field-label">adatok betöltéseâ€¦</div>
+                          </div>
+                        ) : waterData?.measurements && waterData.measurements.length > 0 ? (() => {
+                          const waterValue = waterData.measurements[waterData.measurements.length - 1].value
+                          const waterLevel = getWaterLevelLevel(waterValue)
+                          const waterVariantClass = getVariantClass(waterLevel, 'water')
+                          const waterDescription = getLevelDescription(waterLevel, 'water')
+                          return (
+                            <div className={`data-field ${waterVariantClass} `}>
+                              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <div className="data-field-label" >
+                                  <span className="data-field-icon">💧</span>
+                                  Vízállás
+                                </div>
+                                <div className="data-field-description">{waterDescription}</div>
+                              </div>
+                              <div className="flex-row-center">
+                                <div className="data-field-value" >
+                                  {waterValue.toFixed(1)}
+                                </div>
+                                <div className="data-field-label" >{waterData.unit || 'cm'}</div>
+                                <span
+                                  style={{
+                                    position: 'relative',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    width: '14px',
+                                    height: '14px',
+                                    borderRadius: '50%',
+                                    backgroundColor: '#94a3b8',
+                                    color: '#ffffff',
+                                    fontSize: '0.625rem',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    marginLeft: 'auto',
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
+                                    if (tooltip) {
+                                      tooltip.style.opacity = '1'
+                                      tooltip.style.visibility = 'visible'
+                                      // Vízállás és vízhőmérséklet tooltip-jei balra jelennek meg
+                                      adjustTooltipPosition(tooltip, e.currentTarget, true)
+                                    }
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
+                                    if (tooltip) {
+                                      tooltip.style.opacity = '0'
+                                      tooltip.style.visibility = 'hidden'
+                                    }
+                                  }}
+                                >
+                                  i
+                                  <span
+                                    data-tooltip
+                                    style={{
+                                      position: 'absolute',
+                                      top: '50%',
+                                      right: '100%',
+                                      left: 'auto',
+                                      transform: 'translateY(-50%)',
+                                      marginRight: '5px',
+                                      marginLeft: '0',
+                                      padding: '6px 10px',
+                                      backgroundColor: '#1e293b',
+                                      color: '#ffffff',
+                                      borderRadius: '4px',
+                                      fontSize: '12px',
+                                      whiteSpace: 'nowrap',
+                                      zIndex: 1000,
+                                      pointerEvents: 'none',
+                                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+                                      opacity: 0,
+                                      visibility: 'hidden',
+                                      transition: 'opacity 0.2s, visibility 0.2s',
+                                    }}
+                                  >
+                                    Mérés dátuma: {new Date(waterData.measurements[waterData.measurements.length - 1].date).toLocaleString('hu-HU')}
+                                  </span>
+                                </span>
+                              </div>
+                            </div>
+                          )
+                        })() : null}
 
-                  {/* Időjárási adatok modernizált megjelenítéssel */}
-                  {/* Vízhőmérséklet - áthelyezve a gridbe */}
-                  {waterTemperatureLoading ? (
-                    <div className="data-field variant-temp-loading">
-                      <div style={{ fontSize: '0.75rem', color: '#d97706', fontWeight: 600, marginBottom: '0.25rem', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                        <span style={{ fontSize: '0.9rem' }}>🌡️</span>
-                        Vízhőmérséklet
+                        {/* Időjárási adatok modernizált megjelenítéssel */}
+                        {/* Vízhőmérséklet - áthelyezve a gridbe */}
+                        {waterTemperatureLoading ? (
+                          <div className="data-field variant-temp-loading">
+                            <div style={{ fontSize: '0.75rem', color: '#d97706', fontWeight: 600, marginBottom: '0.25rem', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                              <span style={{ fontSize: '0.9rem' }}>🌡️</span>
+                              Vízhőmérséklet
+                            </div>
+                            <div className="data-field-label" >adatok betöltéseâ€¦</div>
+                          </div>
+                        ) : waterTemperatureError ? (
+                          <div className="data-field variant-temp-error">
+                            <div style={{ fontSize: '0.75rem', color: '#991b1b', fontWeight: 600, marginBottom: '0.25rem', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                              <span style={{ fontSize: 'calc(var(--icon-size-base) * 1)' }}>🌡️</span>
+                              Vízhőmérséklet
+                            </div>
+                            <div className="data-field-label" >⚠️ď¸Ź {waterTemperatureError}</div>
+                          </div>
+                        ) : waterTemperatureData && waterTemperatureData.measurements && waterTemperatureData.measurements.length > 0 && waterTemperatureData.measurements[waterTemperatureData.measurements.length - 1].value != null ? (() => {
+                          const tempValue = waterTemperatureData.measurements[waterTemperatureData.measurements.length - 1].value
+                          const tempLevel = getWaterTempLevel(tempValue)
+                          const tempVariantClass = getVariantClass(tempLevel, 'temp')
+                          const tempDescription = getLevelDescription(tempLevel, 'temp')
+                          return (
+                            <div className={`data-field ${tempVariantClass} `}>
+                              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <div className="data-field-label">
+                                  <span className="data-field-icon">🌡️</span>
+                                  Vízhőmérséklet
+                                </div>
+                                <div className="data-field-description">{tempDescription}</div>
+                              </div>
+                              <div className="flex-row-center">
+                                <div className="data-field-value" >
+                                  {typeof tempValue === 'number' ? tempValue.toFixed(1) : tempValue}
+                                </div>
+                                <div className="data-field-label" >{waterTemperatureData.unit || '°C'}</div>
+                                <span
+                                  className="info-badge-circle"
+                                  style={{ marginLeft: 'auto' }}
+                                  onMouseEnter={(e) => {
+                                    const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
+                                    if (tooltip) {
+                                      tooltip.style.opacity = '1'
+                                      tooltip.style.visibility = 'visible'
+                                      // Vízállás és vízhőmérséklet tooltip-jei balra jelennek meg
+                                      adjustTooltipPosition(tooltip, e.currentTarget, true)
+                                    }
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
+                                    if (tooltip) {
+                                      tooltip.style.opacity = '0'
+                                      tooltip.style.visibility = 'hidden'
+                                    }
+                                  }}
+                                >
+                                  i
+                                  <span
+                                    data-tooltip
+                                    style={{
+                                      position: 'absolute',
+                                      top: '50%',
+                                      right: '100%',
+                                      left: 'auto',
+                                      transform: 'translateY(-50%)',
+                                      marginRight: '5px',
+                                      marginLeft: '0',
+                                      padding: '6px 10px',
+                                      backgroundColor: '#1e293b',
+                                      color: '#ffffff',
+                                      borderRadius: '4px',
+                                      fontSize: '12px',
+                                      whiteSpace: 'nowrap',
+                                      zIndex: 1000,
+                                      pointerEvents: 'none',
+                                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+                                      opacity: 0,
+                                      visibility: 'hidden',
+                                      transition: 'opacity 0.2s, visibility 0.2s',
+                                    }}
+                                  >
+                                    Mérés dátuma: {new Date(waterTemperatureData.measurements[waterTemperatureData.measurements.length - 1].date).toLocaleString('hu-HU')}
+                                  </span>
+                                </span>
+                              </div>
+                            </div>
+                          )
+                        })() : !waterTemperatureLoading && waterTemperatureVarId ? (
+                          <div className="data-field" style={{
+                            padding: '0.75rem',
+                            borderRadius: '0.75rem',
+                            backgroundColor: '#fef3c7',
+                            border: '1px solid #fde68a'
+                          }}>
+                            <div style={{ fontSize: '0.75rem', color: '#d97706', fontWeight: 600, marginBottom: '0.25rem', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                              <span style={{ fontSize: 'calc(var(--icon-size-base) * 1)' }}>🌡️</span>
+                              Vízhőmérséklet
+                            </div>
+                            <div style={{ fontSize: '0.85rem', color: '#64748b' }}>adatok betöltése...</div>
+                          </div>
+                        ) : null}
+                        {/* Levegő hőmérséklet és légnyomás egymás mellett */}
+
+                        {/* Levegő hőmérséklet */}
+                        {(() => {
+                          const airTempLevel = getAirTempLevel(weatherData.airTemperatureC)
+                          const airTempVariantClass = getVariantClass(airTempLevel, 'weather')
+                          const airTempDescription = getLevelDescription(airTempLevel, 'weather')
+                          return (
+                            <div className={`data-field ${airTempVariantClass} `}>
+                              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <div className="data-field-label" >
+                                  <span className="data-field-icon-large">🌡️</span>
+                                  LEVEGŐ  HŐ MÉRSÉKLET
+                                </div>
+                                <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>{airTempDescription}</div>
+                              </div>
+                              <div className={`data-field-value ${weatherData.airTemperatureC > 20 ? 'text-hot' :
+                                weatherData.airTemperatureC > 10 ? 'text-mild' : 'text-cold'
+                                } `}>
+                                {weatherData.airTemperatureC.toFixed(1)} °C
+                              </div>
+                            </div>
+                          )
+                        })()}
+
+                        {/* Légnyomás */}
+                        {(() => {
+                          const pressureLevel = getPressureLevel(weatherData.pressureHpa)
+                          const pressureVariantClass = getVariantClass(pressureLevel, 'pressure')
+                          const pressureDescription = getLevelDescription(pressureLevel, 'pressure')
+                          return (
+                            <div className={`data-field ${pressureVariantClass} `}>
+                              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <div className="data-field-label" >
+                                  <span className="data-field-icon-large">📊</span>
+                                  LÉGNYOMÁS
+                                </div>
+                                <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>{pressureDescription}</div>
+                              </div>
+                              <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '0.5rem' }}>
+                                <span className="data-field-value" >
+                                  {weatherData.pressureHpa.toFixed(0)} hPa
+                                </span>
+                                <span className={`trend-badge ${weatherData.pressureTrend === 'emelkedő' ? 'trend-up' :
+                                  weatherData.pressureTrend === 'csökkenő' ? 'trend-down' : 'trend-stable'
+                                  } `}>
+                                  {weatherData.pressureTrend === 'emelkedő' ? '↑ Emelkedik' : weatherData.pressureTrend === 'csökkenő' ? '↓ Csökken' : '→ Stabil'}
+                                </span>
+                              </div>
+                            </div>
+                          )
+                        })()}
+
+
+
+                        {(() => {
+                          const cloudLevel = getCloudCoverLevel(weatherData.cloudCoverPercent)
+                          const cloudVariantClass = getVariantClass(cloudLevel, 'cloud')
+                          const cloudDescription = getLevelDescription(cloudLevel, 'cloud')
+                          return (
+                            <div className={`data-field ${cloudVariantClass} `}>
+                              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <div className="data-field-label" >
+                                  <span className="data-field-icon">☁️</span>
+                                  FELHŐZET
+                                </div>
+                                <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>{cloudDescription}</div>
+                              </div>
+                              <div className="data-field-value" >{weatherData.cloudCoverPercent}%</div>
+                            </div>
+                          )
+                        })()}
+                        {(() => {
+                          const rainLevel = getRainLevel(weatherData.precipitationChancePercent)
+                          const rainVariantClass = getVariantClass(rainLevel, 'rain')
+                          const rainDescription = getLevelDescription(rainLevel, 'rain')
+                          return (
+                            <div className={`data-field ${rainVariantClass} `}>
+                              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <div className="data-field-label" >
+                                  <span className="data-field-icon">☔</span>
+                                  CSAPADÉK ESÉLY
+                                </div>
+                                <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>{rainDescription}</div>
+                              </div>
+                              <div className="data-field-value" >{weatherData.precipitationChancePercent}%</div>
+                              <div className="data-field-label" >
+                                {weatherData.precipitationIntensityMmPerHour.toFixed(1)} mm/h
+                              </div>
+                            </div>
+                          )
+                        })()}
+
+
+                        {/* Szél és holdfázis egymás mellett */}
+
+                        {(() => {
+                          const windLevel = getWindLevel(weatherData.windSpeedKph)
+                          const windVariantClass = getVariantClass(windLevel, 'wind')
+                          const windDescription = getLevelDescription(windLevel, 'wind')
+                          return (
+                            <div className={`data-field ${windVariantClass} items-center gap-2`}>
+                              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <div className="data-field-label" >
+                                  <span className="data-field-icon-large">💨</span>
+                                  SZÉL
+                                </div>
+                                <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>{windDescription}</div>
+                              </div>
+                              <div className="data-field-value" >
+                                {weatherData.windDirection} {weatherData.windSpeedKph.toFixed(1)} km/h
+                              </div>
+                            </div>
+                          )
+                        })()}
+                        {(() => {
+                          const uvLevel = getUVLevel(weatherData.uvIndex)
+                          const uvVariantClass = getVariantClass(uvLevel, 'uv')
+                          const uvDescription = getLevelDescription(uvLevel, 'uv')
+                          return (
+                            <div className={`data-field ${uvVariantClass} `}>
+                              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <div className="data-field-label" >
+                                  <span className="data-field-icon">☀️</span>
+                                  UV-INDEX
+                                </div>
+                                <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>{uvDescription}</div>
+                              </div>
+                              <div className="data-field-value" >{weatherData.uvIndex.toFixed(1)}</div>
+                            </div>
+                          )
+                        })()}
+
+                        {(() => {
+                          const moonLevel = getMoonLevel(weatherData.moonPhase)
+                          const moonVariantClass = getVariantClass(moonLevel, 'moon')
+                          return (
+                            <div className={`data-field ${moonVariantClass} `}>
+                              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <div className="data-field-label" >
+                                  <span className="data-field-icon">🌔</span>
+                                  HOLDFÁZIS
+                                </div>
+                                <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>{getDaysUntilFullMoon(weatherData.moonPhase)}</div>
+                              </div>
+                              <div className="data-field-value" >{weatherData.moonPhase}</div>
+                            </div>
+                          )
+                        })()}
+
+                        {(() => {
+                          const lightChangeLevel = getLightChangeLevel(weatherData.sunrise, weatherData.sunset)
+                          const sunVariantClass = `variant-sun-${lightChangeLevel} `
+                          return (
+                            <div className={`data-field ${sunVariantClass} `}>
+                              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <div className="data-field-label" >
+                                  <span className="data-field-icon">🌅</span>
+                                  FÉNYVÁLTÁS
+                                </div>
+                                <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>{isLightChangeTime(weatherData.sunrise, weatherData.sunset)}</div>
+                              </div>
+                              <div className="data-field-value" >
+                                {weatherData.sunrise}
+                              </div>
+                              <div className="data-field-value" >
+                                {weatherData.sunset}
+                              </div>
+                            </div>
+                          )
+                        })()}
+
                       </div>
-                      <div className="data-field-label" >adatok betöltéseâ€¦</div>
                     </div>
-                  ) : waterTemperatureError ? (
-                    <div className="data-field variant-temp-error">
-                      <div style={{ fontSize: '0.75rem', color: '#991b1b', fontWeight: 600, marginBottom: '0.25rem', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                        <span style={{ fontSize: 'calc(var(--icon-size-base) * 1)' }}>🌡️</span>
-                        Vízhőmérséklet
-                      </div>
-                      <div className="data-field-label" >⚠️ď¸Ź {waterTemperatureError}</div>
-                    </div>
-                  ) : waterTemperatureData && waterTemperatureData.measurements && waterTemperatureData.measurements.length > 0 && waterTemperatureData.measurements[waterTemperatureData.measurements.length - 1].value != null ? (() => {
-                    const tempValue = waterTemperatureData.measurements[waterTemperatureData.measurements.length - 1].value
-                    const tempLevel = getWaterTempLevel(tempValue)
-                    const tempVariantClass = getVariantClass(tempLevel, 'temp')
-                    const tempDescription = getLevelDescription(tempLevel, 'temp')
-                    return (
-                      <div className={`data-field ${tempVariantClass} `}>
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <div className="data-field-label">
-                            <span className="data-field-icon">🌡️</span>
-                            Vízhőmérséklet
-                          </div>
-                          <div className="data-field-description">{tempDescription}</div>
-                        </div>
-                        <div className="flex-row-center">
-                          <div className="data-field-value" >
-                            {typeof tempValue === 'number' ? tempValue.toFixed(1) : tempValue}
-                          </div>
-                          <div className="data-field-label" >{waterTemperatureData.unit || '°C'}</div>
-                          <span
-                            className="info-badge-circle"
-                            style={{ marginLeft: 'auto' }}
-                            onMouseEnter={(e) => {
-                              const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
-                              if (tooltip) {
-                                tooltip.style.opacity = '1'
-                                tooltip.style.visibility = 'visible'
-                                // Vízállás és vízhőmérséklet tooltip-jei balra jelennek meg
-                                adjustTooltipPosition(tooltip, e.currentTarget, true)
-                              }
-                            }}
-                            onMouseLeave={(e) => {
-                              const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
-                              if (tooltip) {
-                                tooltip.style.opacity = '0'
-                                tooltip.style.visibility = 'hidden'
-                              }
-                            }}
-                          >
-                            i
-                            <span
-                              data-tooltip
-                              style={{
-                                position: 'absolute',
-                                top: '50%',
-                                right: '100%',
-                                left: 'auto',
-                                transform: 'translateY(-50%)',
-                                marginRight: '5px',
-                                marginLeft: '0',
-                                padding: '6px 10px',
-                                backgroundColor: '#1e293b',
-                                color: '#ffffff',
-                                borderRadius: '4px',
-                                fontSize: '12px',
-                                whiteSpace: 'nowrap',
-                                zIndex: 1000,
-                                pointerEvents: 'none',
-                                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
-                                opacity: 0,
-                                visibility: 'hidden',
-                                transition: 'opacity 0.2s, visibility 0.2s',
-                              }}
-                            >
-                              Mérés dátuma: {new Date(waterTemperatureData.measurements[waterTemperatureData.measurements.length - 1].date).toLocaleString('hu-HU')}
-                            </span>
-                          </span>
-                        </div>
-                      </div>
-                    )
-                  })() : !waterTemperatureLoading && waterTemperatureVarId ? (
-                    <div className="data-field" style={{
-                      padding: '0.75rem',
-                      borderRadius: '0.75rem',
-                      backgroundColor: '#fef3c7',
-                      border: '1px solid #fde68a'
-                    }}>
-                      <div style={{ fontSize: '0.75rem', color: '#d97706', fontWeight: 600, marginBottom: '0.25rem', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                        <span style={{ fontSize: 'calc(var(--icon-size-base) * 1)' }}>🌡️</span>
-                        Vízhőmérséklet
-                      </div>
-                      <div style={{ fontSize: '0.85rem', color: '#64748b' }}>adatok betöltése...</div>
-                    </div>
-                  ) : null}
-                  {/* Levegő hőmérséklet és légnyomás egymás mellett */}
 
-                  {/* Levegő hőmérséklet */}
-                  {(() => {
-                    const airTempLevel = getAirTempLevel(weatherData.airTemperatureC)
-                    const airTempVariantClass = getVariantClass(airTempLevel, 'weather')
-                    const airTempDescription = getLevelDescription(airTempLevel, 'weather')
-                    return (
-                      <div className={`data-field ${airTempVariantClass} `}>
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <div className="data-field-label" >
-                            <span className="data-field-icon-large">🌡️</span>
-                            LEVEGŐ  HŐ MÉRSÉKLET
-                          </div>
-                          <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>{airTempDescription}</div>
-                        </div>
-                        <div className={`data-field-value ${weatherData.airTemperatureC > 20 ? 'text-hot' :
-                          weatherData.airTemperatureC > 10 ? 'text-mild' : 'text-cold'
-                          } `}>
-                          {weatherData.airTemperatureC.toFixed(1)} °C
-                        </div>
-                      </div>
-                    )
-                  })()}
-
-                  {/* Légnyomás */}
-                  {(() => {
-                    const pressureLevel = getPressureLevel(weatherData.pressureHpa)
-                    const pressureVariantClass = getVariantClass(pressureLevel, 'pressure')
-                    const pressureDescription = getLevelDescription(pressureLevel, 'pressure')
-                    return (
-                      <div className={`data-field ${pressureVariantClass} `}>
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <div className="data-field-label" >
-                            <span className="data-field-icon-large">📊</span>
-                            LÉGNYOMÁS
-                          </div>
-                          <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>{pressureDescription}</div>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '0.5rem' }}>
-                          <span className="data-field-value" >
-                            {weatherData.pressureHpa.toFixed(0)} hPa
-                          </span>
-                          <span className={`trend-badge ${weatherData.pressureTrend === 'emelkedő' ? 'trend-up' :
-                            weatherData.pressureTrend === 'csökkenő' ? 'trend-down' : 'trend-stable'
-                            } `}>
-                            {weatherData.pressureTrend === 'emelkedő' ? '↑ Emelkedik' : weatherData.pressureTrend === 'csökkenő' ? '↓ Csökken' : '→ Stabil'}
-                          </span>
-                        </div>
-                      </div>
-                    )
-                  })()}
-
-
-
-                  {(() => {
-                    const cloudLevel = getCloudCoverLevel(weatherData.cloudCoverPercent)
-                    const cloudVariantClass = getVariantClass(cloudLevel, 'cloud')
-                    const cloudDescription = getLevelDescription(cloudLevel, 'cloud')
-                    return (
-                      <div className={`data-field ${cloudVariantClass} `}>
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <div className="data-field-label" >
-                            <span className="data-field-icon">☁️</span>
-                            FELHŐZET
-                          </div>
-                          <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>{cloudDescription}</div>
-                        </div>
-                        <div className="data-field-value" >{weatherData.cloudCoverPercent}%</div>
-                      </div>
-                    )
-                  })()}
-                  {(() => {
-                    const rainLevel = getRainLevel(weatherData.precipitationChancePercent)
-                    const rainVariantClass = getVariantClass(rainLevel, 'rain')
-                    const rainDescription = getLevelDescription(rainLevel, 'rain')
-                    return (
-                      <div className={`data-field ${rainVariantClass} `}>
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <div className="data-field-label" >
-                            <span className="data-field-icon">☔</span>
-                            CSAPADÉK ESÉLY
-                          </div>
-                          <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>{rainDescription}</div>
-                        </div>
-                        <div className="data-field-value" >{weatherData.precipitationChancePercent}%</div>
-                        <div className="data-field-label" >
-                          {weatherData.precipitationIntensityMmPerHour.toFixed(1)} mm/h
-                        </div>
-                      </div>
-                    )
-                  })()}
-
-
-                  {/* Szél és holdfázis egymás mellett */}
-
-                  {(() => {
-                    const windLevel = getWindLevel(weatherData.windSpeedKph)
-                    const windVariantClass = getVariantClass(windLevel, 'wind')
-                    const windDescription = getLevelDescription(windLevel, 'wind')
-                    return (
-                      <div className={`data-field ${windVariantClass} items-center gap-2`}>
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <div className="data-field-label" >
-                            <span className="data-field-icon-large">💨</span>
-                            SZÉL
-                          </div>
-                          <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>{windDescription}</div>
-                        </div>
-                        <div className="data-field-value" >
-                          {weatherData.windDirection} {weatherData.windSpeedKph.toFixed(1)} km/h
-                        </div>
-                      </div>
-                    )
-                  })()}
-                  {(() => {
-                    const uvLevel = getUVLevel(weatherData.uvIndex)
-                    const uvVariantClass = getVariantClass(uvLevel, 'uv')
-                    const uvDescription = getLevelDescription(uvLevel, 'uv')
-                    return (
-                      <div className={`data-field ${uvVariantClass} `}>
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <div className="data-field-label" >
-                            <span className="data-field-icon">☀️</span>
-                            UV-INDEX
-                          </div>
-                          <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>{uvDescription}</div>
-                        </div>
-                        <div className="data-field-value" >{weatherData.uvIndex.toFixed(1)}</div>
-                      </div>
-                    )
-                  })()}
-
-                  {(() => {
-                    const moonLevel = getMoonLevel(weatherData.moonPhase)
-                    const moonVariantClass = getVariantClass(moonLevel, 'moon')
-                    return (
-                      <div className={`data-field ${moonVariantClass} `}>
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <div className="data-field-label" >
-                            <span className="data-field-icon">🌔</span>
-                            HOLDFÁZIS
-                          </div>
-                          <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>{getDaysUntilFullMoon(weatherData.moonPhase)}</div>
-                        </div>
-                        <div className="data-field-value" >{weatherData.moonPhase}</div>
-                      </div>
-                    )
-                  })()}
-
-                  {(() => {
-                    const lightChangeLevel = getLightChangeLevel(weatherData.sunrise, weatherData.sunset)
-                    const sunVariantClass = `variant-sun-${lightChangeLevel} `
-                    return (
-                      <div className={`data-field ${sunVariantClass} `}>
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <div className="data-field-label" >
-                            <span className="data-field-icon">🌅</span>
-                            FÉNYVÁLTÁS
-                          </div>
-                          <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>{isLightChangeTime(weatherData.sunrise, weatherData.sunset)}</div>
-                        </div>
-                        <div className="data-field-value" >
-                          {weatherData.sunrise}
-                        </div>
-                        <div className="data-field-value" >
-                          {weatherData.sunset}
-                        </div>
-                      </div>
-                    )
-                  })()}
-
+                  </div>
                 </div>
               </div>
-
             </div>
           ) : null}
         </section >
