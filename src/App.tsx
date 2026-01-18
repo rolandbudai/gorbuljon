@@ -4,6 +4,9 @@ import * as XLSX from 'xlsx'
 import { useAuth } from './context/AuthContext.tsx'
 import logoImg from './assets/logo-cropped.svg'
 import geolocIcon from './assets/geoloc.svg'
+import notesIcon from './assets/notes.png'
+import forecastIcon from './assets/forecast.png'
+import statisticsIcon from './assets/statistics.png'
 import {
   fetchWeather,
   searchLocations,
@@ -2490,52 +2493,72 @@ function App() {
 
         {/* Navigation Buttons - Vertical Stack below Input/Save */}
         {user && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
-            {/* Statisztikák - Csak ha van adat */}
-            {records.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setShowStatistics(!showStatistics)}
-                style={{
-                  padding: `clamp(0.5rem, 1.5vw, 0.75rem) clamp(1rem, 2.5vw, 1.25rem)`,
-                  borderRadius: '0.25rem',
-                  border: '1px solid #2563eb',
-                  backgroundColor: showStatistics ? '#2563eb' : '#ffffff',
-                  color: showStatistics ? '#ffffff' : '#2563eb',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  fontSize: 'clamp(0.875rem, 2vw, 1rem)',
-                  fontWeight: 500,
-                  minHeight: '44px',
-                  width: '100%',
-                }}
-              >
-                {showStatistics ? 'Statisztikák elrejtése' : 'Statisztikák'}
-              </button>
-            )}
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1.25rem', // 20px
+            marginBottom: '1.5rem',
+            width: '100%'
+          }}>
 
-            {/* Napló - Mindig látható ha be van lépve */}
+            {/* 1. PRIMARY: Napló (Logbook) */}
             <button
               type="button"
               onClick={() => setShowLogbook(true)}
               style={{
-                padding: `clamp(0.5rem, 1.5vw, 0.75rem) clamp(1rem, 2.5vw, 1.25rem)`,
-                borderRadius: '0.25rem',
-                border: '1px solid #0d9488',
-                backgroundColor: '#ffffff',
-                color: '#0d9488',
+                display: 'flex',
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center', // Centered
+                gap: '1rem',
+                padding: '0 1.5rem',
+                borderRadius: '18px',
+                border: 'none',
+                background: 'linear-gradient(180deg, #238A8A 0%, #1F6F78 100%)', // Deep Teal Gradient
+                color: '#F4F7F6', // Off-white
                 cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                fontSize: 'clamp(0.875rem, 2vw, 1rem)',
-                fontWeight: 500,
-                minHeight: '44px',
+                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                boxShadow: '0 6px 16px rgba(0,0,0,0.18)',
                 width: '100%',
+                height: '64px', // Tall
+                textAlign: 'center', // Centered text
+                position: 'relative',
+                overflow: 'hidden'
               }}
+              onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.98)'}
+              onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
+              onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
             >
-              Napló
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', zIndex: 10 }}> {/* Text on top */}
+                <span style={{
+                  fontSize: '1.1rem',
+                  fontWeight: 700,
+                  letterSpacing: '0.005em',
+                  textTransform: 'uppercase',
+                  lineHeight: '1.2'
+                }}>
+                  NAPLÓ
+                </span>
+              </div>
+              {/* Watermark Icon */}
+              <img
+                src={notesIcon}
+                alt=""
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  width: '50px',
+                  height: '50px',
+                  objectFit: 'contain',
+                  opacity: 0.2,
+                  zIndex: 0
+                }}
+              />
             </button>
 
-            {/* Előrejelzés - Mindig látható ha be van lépve */}
+            {/* 2. SECONDARY: Előrejelzések (Forecast) */}
             <button
               type="button"
               onClick={() => {
@@ -2545,21 +2568,109 @@ function App() {
                 }
               }}
               style={{
-                padding: `clamp(0.5rem, 1.5vw, 0.75rem) clamp(1rem, 2.5vw, 1.25rem)`,
-                borderRadius: '0.25rem',
-                border: '1px solid #f59e0b',
-                backgroundColor: '#ffffff',
-                color: '#f59e0b',
+                display: 'flex',
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center', // Centered
+                gap: '1rem',
+                padding: '0 1.5rem',
+                borderRadius: '15px',
+                border: 'none',
+                backgroundColor: '#2C5D7D', // Deep Water Blue
+                color: '#EAF2F6',
                 cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                fontSize: 'clamp(0.875rem, 2vw, 1rem)',
-                fontWeight: 500,
-                minHeight: '44px',
+                transition: 'opacity 0.2s ease',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
                 width: '100%',
+                height: '52px', // Medium
+                textAlign: 'center', // Centered text
+                position: 'relative', // Relative for absolute icon
+                overflow: 'hidden'
               }}
+              onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
+              onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
             >
-              Előrejelzések
+              <span style={{
+                fontSize: '1rem',
+                fontWeight: 500,
+                letterSpacing: '0.005em',
+                textTransform: 'uppercase',
+                position: 'relative',
+                zIndex: 10
+              }}>
+                ELŐREJELZÉS
+              </span>
+              {/* Watermark Icon */}
+              <img
+                src={forecastIcon}
+                alt=""
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  width: '40px',
+                  height: '40px',
+                  objectFit: 'contain',
+                  opacity: 0.15,
+                  zIndex: 0
+                }}
+              />
             </button>
+
+            {/* 3. TERTIARY: Statisztikák (Statistics) - Utility */}
+            {records.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowStatistics(!showStatistics)}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center', // Centered
+                  gap: '1rem',
+                  padding: '0 1.5rem',
+                  borderRadius: '12px',
+                  border: '1px solid rgba(255, 255, 255, 0.25)', // Subtle border
+                  backgroundColor: 'transparent',
+                  color: '#D6E2E5', // Muted text
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s ease',
+                  width: '100%',
+                  height: '48px', // Short
+                  textAlign: 'center', // Centered text
+                  position: 'relative', // Relative for absolute icon
+                  overflow: 'hidden'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
+                <span style={{
+                  fontSize: '0.95rem',
+                  fontWeight: 400,
+                  position: 'relative',
+                  zIndex: 10
+                }}>
+                  STATISZTIKÁK
+                </span>
+                {/* Watermark Icon */}
+                <img
+                  src={statisticsIcon}
+                  alt=""
+                  style={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    width: '36px',
+                    height: '36px',
+                    objectFit: 'contain',
+                    opacity: 0.15, // Slightly higher for visibility on transparent bg
+                    zIndex: 0
+                  }}
+                />
+              </button>
+            )}
           </div>
         )}
 
@@ -2570,7 +2681,7 @@ function App() {
             width: '100%',
             maxWidth: '100%',
             position: 'relative', // Ensure absolute child (data-card) is positioned relative to this section
-            minHeight: '85vh', // Ensure section has height for the absolute card
+            // minHeight removed to prevent scrolling on start screen
           }}
         >
           {!user ? (
