@@ -37,25 +37,29 @@ export function StatisticsSection({ records, onClose }: StatisticsSectionProps) 
               className={`stat-tab ${activeView === 'summary' ? 'active' : ''}`}
               onClick={() => setActiveView('summary')}
             >
-              📋 Összefoglaló
+              <span className="tab-icon">📋</span>
+              <span className="tab-label">Összefoglaló</span>
             </button>
             <button
               className={`stat-tab ${activeView === 'success' ? 'active' : ''}`}
               onClick={() => setActiveView('success')}
             >
-              📊 Fogási Sikeresség
+              <span className="tab-icon">📊</span>
+              <span className="tab-label">Fogási Sikeresség</span>
             </button>
             <button
               className={`stat-tab ${activeView === 'fishType' ? 'active' : ''}`}
               onClick={() => setActiveView('fishType')}
             >
-              🐟 Halfaj Elemzés
+              <span className="tab-icon">🐟</span>
+              <span className="tab-label">Halfaj Elemzés</span>
             </button>
             <button
               className={`stat-tab ${activeView === 'correlation' ? 'active' : ''}`}
               onClick={() => setActiveView('correlation')}
             >
-              🔥 Korreláció
+              <span className="tab-icon">🔥</span>
+              <span className="tab-label">Korreláció</span>
             </button>
           </div>
 

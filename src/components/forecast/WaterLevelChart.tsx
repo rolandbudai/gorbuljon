@@ -48,7 +48,12 @@ export const WaterLevelChart: React.FC<WaterLevelChartProps> = ({ points }) => {
     const chartHeight = baseHeight
     const chartWidth = width || 100 // Prevent division by zero
 
-    const padding = { top: 20, right: 30, bottom: 30, left: 40 }
+    const isMobile = window.innerWidth <= 768
+    const padding = isMobile
+        ? { top: 10, right: 8, bottom: 20, left: 30 }
+        : { top: 18, right: 18, bottom: 36, left: 45 }
+
+    // Recalculate plot area based on dynamic padding
     const plotWidth = chartWidth - padding.left - padding.right
     const plotHeight = chartHeight - padding.top - padding.bottom
 
@@ -85,18 +90,27 @@ export const WaterLevelChart: React.FC<WaterLevelChartProps> = ({ points }) => {
                                 y2={y}
                                 stroke="#e2e8f0"
                                 strokeWidth="1"
-                                strokeDasharray="4,4"
+                                strokeDasharray="2,2"
                             />
                             {/* Label */}
                             <text
                                 x={padding.left - 8}
-                                y={y + 4}
+                                y={y + 3}
                                 textAnchor="end"
-                                fontSize="11"
+                                fontSize="9"
                                 fill="#64748b"
                             >
-                                {value.toFixed(0)}
+                                {value.toFixed(0)} cm
                             </text>
+                            {/* Tick mark */}
+                            <line
+                                x1={padding.left - 5}
+                                y1={y}
+                                x2={padding.left}
+                                y2={y}
+                                stroke="#cbd5e1"
+                                strokeWidth="1"
+                            />
                         </g>
                     )
                 })}
@@ -106,7 +120,7 @@ export const WaterLevelChart: React.FC<WaterLevelChartProps> = ({ points }) => {
                     d={pathData}
                     fill="none"
                     stroke="#3b82f6"
-                    strokeWidth="2.5"
+                    strokeWidth="1.5"
                     strokeLinecap="round"
                     strokeLinejoin="round"
                 />
@@ -117,17 +131,17 @@ export const WaterLevelChart: React.FC<WaterLevelChartProps> = ({ points }) => {
                     const y = calculateY(point.value)
 
                     let color = '#3b82f6'
-                    let radius = 5
+                    let radius = 6
 
                     if (point.isPast) {
-                        color = '#94a3b8' // Slate 400
-                        radius = 4
-                    } else if (point.isToday) {
-                        color = '#10b981' // Emerald 500
+                        color = '#64748b'
                         radius = 6
+                    } else if (point.isToday) {
+                        color = '#10b981'
+                        radius = 7
                     } else if (point.isFuture) {
-                        color = '#f59e0b' // Amber 500
-                        radius = 5
+                        color = '#f59e0b'
+                        radius = 6
                     }
 
                     return (
@@ -141,38 +155,49 @@ export const WaterLevelChart: React.FC<WaterLevelChartProps> = ({ points }) => {
                                 cy={y}
                                 r={radius}
                                 fill={color}
-                                stroke="white"
-                                strokeWidth="2"
+                                stroke="#ffffff"
+                                strokeWidth="1.5"
                             />
 
-                            {/* Value Label (only for Today and future, or all?) - Let's show on hover/touch via simple tooltip or all for mobile?
-                                 Showing all might be cluttered. Let's show values above points for Today and Future.
-                             */}
-                            {(point.isToday || point.isFuture) && (
-                                <text
-                                    x={x}
-                                    y={y - 12}
-                                    textAnchor="middle"
-                                    fontSize="11"
-                                    fontWeight="600"
-                                    fill={color}
-                                >
-                                    {point.value.toFixed(0)}
-                                </text>
-                            )}
-                            {/* Date Label on X Axis (simplified) */}
+                            {/* Date Label on X Axis */}
                             <text
                                 x={x}
-                                y={chartHeight - 10}
+                                y={chartHeight - padding.bottom + 12}
                                 textAnchor="middle"
-                                fontSize="10"
+                                fontSize="8"
                                 fill="#64748b"
                             >
-                                {point.date.toLocaleDateString('hu-HU', { month: 'short', day: 'numeric' })}
+                                {point.isToday ? 'Mai nap' : (() => {
+                                    const date = point.date
+                                    const year = date.getFullYear()
+                                    const month = String(date.getMonth() + 1).padStart(2, '0')
+                                    const day = String(date.getDate()).padStart(2, '0')
+                                    return `${year}.${month}.${day}`
+                                })()}
                             </text>
                         </g>
                     )
                 })}
+
+                {/* X Axis Line */}
+                <line
+                    x1={padding.left}
+                    y1={padding.top + plotHeight}
+                    x2={padding.left + plotWidth}
+                    y2={padding.top + plotHeight}
+                    stroke="#cbd5e1"
+                    strokeWidth="1"
+                />
+
+                {/* Y Axis Line */}
+                <line
+                    x1={padding.left}
+                    y1={padding.top}
+                    x2={padding.left}
+                    y2={padding.top + plotHeight}
+                    stroke="#cbd5e1"
+                    strokeWidth="1"
+                />
             </svg>
         </div>
     )

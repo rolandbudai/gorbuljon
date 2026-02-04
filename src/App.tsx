@@ -39,6 +39,7 @@ import {
 import { StatisticsSection } from './components/StatisticsSection.tsx'
 import { LogbookSection } from './components/logbook/LogbookSection.tsx'
 import { ForecastSection } from './components/forecast/ForecastSection.tsx'
+import { WaterLevelChart } from './components/forecast/WaterLevelChart'
 import { getLevelDescription as getLevelDescriptionFromStats } from './utils/statistics'
 
 // Fish system types and config
@@ -51,11 +52,16 @@ type FishConfig = {
 
 // Configuration for specific species (default values)
 const SPECIES_CONFIG: Record<string, { width: number; duration: string }> = {
-  pike: { width: 600, duration: '48s' },
-  bass: { width: 200, duration: '36s' },
-  catfish: { width: 300, duration: '55s' },
+  pike: { width: 120, duration: '48s' }, // 50% of previous 240
+  catfish: { width: 240, duration: '55s' }, // 50% of previous 480
+  bream: { width: 60, duration: '45s' }, // 50% of previous 120
+  chub: { width: 75, duration: '40s' }, // 50% of previous 150
+  perch: { width: 45, duration: '35s' }, // 50% of previous 90
+  asp: { width: 105, duration: '50s' }, // 50% of previous 210
+  zander: { width: 105, duration: '50s' }, // 50% of previous 210
+  zander2: { width: 90, duration: '50s' }, // 50% of previous 180
   // Default fallback for new files
-  default: { width: 200, duration: '40s' }
+  default: { width: 100, duration: '40s' }
 }
 
 function App() {
@@ -74,7 +80,9 @@ function App() {
   const [_saveMessage, setSaveMessage] = useState<string | null>(null)
   const [showFishPopup, setShowFishPopup] = useState(false)
   const [selectedFish, setSelectedFish] = useState<Record<string, number>>({})
-  const fishOptions = ['balin', 'csuka', 'harcsa', 'süllő', 'sügér', 'egyéb', 'betli']
+  const [otherConditions, setOtherConditions] = useState<string>('')
+  const [showConditionsPopup, setShowConditionsPopup] = useState(false)
+  const fishOptions = ['balin', 'csuka', 'harcsa', 'süllő', 'kősüllő', 'sügér', 'jászkeszeg', 'egyéb']
   const [authError, setAuthError] = useState<string | null>(null)
   const [geolocationLoading, setGeolocationLoading] = useState(false)
   const [geolocationError, setGeolocationError] = useState<string | null>(null)
@@ -114,7 +122,8 @@ function App() {
     const glob = import.meta.glob('./assets/fish/*.{png,svg,webp}', { eager: true, query: '?url', import: 'default' })
     return Object.entries(glob).map(([path, url]) => {
       // Extract filename without extension as species name
-      const filename = path.split('/').pop()?.split('.')[0].toLowerCase() || 'unknown'
+      // Also remove '-removebg-preview' suffix for cleaner keys
+      const filename = path.split('/').pop()?.split('.')[0].toLowerCase().replace('-removebg-preview', '') || 'unknown'
       const config = SPECIES_CONFIG[filename] || SPECIES_CONFIG['default']
       return {
         src: url,
@@ -210,7 +219,7 @@ function App() {
       return
     }
 
-    setMessage('Rekordok betöltéseâ€¦')
+    setMessage('Rekordok betöltése')
 
     const unsubscribe = listenToRecords(
       user.uid,
@@ -444,7 +453,7 @@ function App() {
     locationName?: string
     locationQuery?: string
     coordinates?: Coordinates
-  }, caughtFish?: string[] | Record<string, number>) => {
+  }, caughtFish?: string[] | Record<string, number>, otherConditions?: string) => {
     if (!user) {
       throw new Error('Bejelentkezés szükséges a mentéshez.')
     }
@@ -512,6 +521,7 @@ function App() {
       caughtFish: caughtFish
         ? (Array.isArray(caughtFish) ? caughtFish : caughtFish)
         : undefined, // Mentés Record<string, number> vagy string[] formátumban
+      otherConditions: otherConditions || undefined,
     }
 
     const ref = await addRecord(user.uid, payload)
@@ -557,6 +567,7 @@ function App() {
     setShowLogbook(false)
     // NEM állítjuk be a selectedRecordId-t, hogy ne nyíljon meg a részletes nézet
     // setSelectedRecordId(null)
+    setOtherConditions(record.otherConditions || '')
   }
 
   const handleSave = async () => {
@@ -575,9 +586,21 @@ function App() {
     setShowFishPopup(true)
   }
 
-  const handleFishPopupConfirm = async () => {
+  // Halak kiválasztása után -> Egyéb körülmények popup
+  const handleFishPopupConfirm = () => {
+    setShowFishPopup(false)
+    setShowConditionsPopup(true)
+  }
+
+  const handleConditionsPopupCancel = () => {
+    setShowConditionsPopup(false)
+    // Ha volt szerkesztés, ne reseteljünk mindent, csak ha a user kifejezetten elveti?
+    // Egyelőre hagyjuk meg a state-et
+  }
+
+  const handleConditionsPopupConfirm = async () => {
     setIsSaving(true)
-    setSaveMessage('Mentés folyamatbanâ€¦')
+    setSaveMessage('Mentés folyamatban…')
 
     try {
       if (editingRecordId) {
@@ -585,7 +608,8 @@ function App() {
           locationName: location,
           locationQuery: locationQuery || location,
           coordinates: coordinates,
-          caughtFish: Object.keys(selectedFish).length > 0 ? selectedFish : undefined
+          caughtFish: Object.keys(selectedFish).length > 0 ? selectedFish : undefined,
+          otherConditions: otherConditions || undefined,
         })
         setSaveMessage('Rekord frissítve!')
         setMessage(`Rekord frissítve: "${location}".`)
@@ -594,16 +618,18 @@ function App() {
         setLocation('')
         setLocationQuery('')
         setCoordinates(undefined)
+        setOtherConditions('')
       } else {
-        await saveLocation(undefined, Object.keys(selectedFish).length > 0 ? selectedFish : undefined)
+        await saveLocation(undefined, Object.keys(selectedFish).length > 0 ? selectedFish : undefined, otherConditions)
       }
 
       setSelectedFish({}) // Reset a következő mentéshez
-      setShowFishPopup(false) // Csak sikeres mentés után zárjuk be a popup-ot
+      setOtherConditions('')
+      setShowConditionsPopup(false) // Csak sikeres mentés után zárjuk be a popup-ot
     } catch (error) {
       console.error('Hiba a rekord mentésekor:', error)
       setSaveMessage(`Mentés sikertelen: ${error instanceof Error ? error.message : 'Ismeretlen hiba'}`)
-      // Ne zárjuk be a popup-ot hiba esetén, hogy a felhasználĂł újra prĂłbálkozhat
+      // Ne zárjuk be a popup-ot hiba esetén
     } finally {
       setIsSaving(false)
     }
@@ -1681,105 +1707,7 @@ function App() {
 
 
 
-  // Tendencia számítás függvény - jelenlegi vízállástĂłl az utolsĂł előrejelzési napig
-  const calculateTrend = (forecasts: ForecastEntry['forecasts'], currentWaterLevel: number) => {
-    if (!forecasts || forecasts.length < 2 || currentWaterLevel === undefined || currentWaterLevel === null) {
-      return null
-    }
 
-    // Csak napi egy adatot használunk (12:00 vagy legközelebbi)
-    const dailyForecasts = forecasts.reduce((acc: typeof forecasts, forecast) => {
-      const date = new Date(forecast.date)
-      const dateKey = date.toISOString().split('T')[0] // YYYY-MM-DD
-
-      const existing = acc.find((f) => {
-        const fDate = new Date(f.date)
-        return fDate.toISOString().split('T')[0] === dateKey
-      })
-
-      if (!existing) {
-        acc.push(forecast)
-      } else {
-        const existingHour = new Date(existing.date).getHours()
-        const currentHour = date.getHours()
-        const existingDiff = Math.abs(existingHour - 12)
-        const currentDiff = Math.abs(currentHour - 12)
-
-        if (currentDiff < existingDiff) {
-          const index = acc.indexOf(existing)
-          acc[index] = forecast
-        }
-      }
-
-      return acc
-    }, [])
-
-    if (dailyForecasts.length < 2) {
-      return null
-    }
-
-    // Rendezzük dátum szerint
-    dailyForecasts.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-
-    // Megkeressük a mai dátumot
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-
-    // Következő 5 nap értékei (a mai dátum utáni 5 nap)
-    const futureDays = dailyForecasts.filter((f) => {
-      const fDate = new Date(f.date)
-      fDate.setHours(0, 0, 0, 0)
-      return fDate > today
-    }).slice(0, 5) // Első 5 nap
-
-    // Ha nincs elég adat (kevesebb mint 2 nap), nem számolunk trendet
-    if (futureDays.length < 2) {
-      return null
-    }
-
-    // Az utolsĂł előrejelzési nap értéke
-    const lastForecast = futureDays[futureDays.length - 1]
-    const lastValue = typeof lastForecast.value === 'string' ? parseFloat(lastForecast.value) : lastForecast.value
-
-    // A változás: utolsĂł előrejelzési nap - jelenlegi vízállás
-    const change = lastValue - currentWaterLevel
-    // Százalékos változás a jelenlegi vízálláshoz viszonyítva
-    const percentChange = currentWaterLevel !== 0 ? (change / Math.abs(currentWaterLevel)) * 100 : 0
-
-    // Az első előrejelzési nap dátumátĂłl az utolsĂłig számoljuk a napokat
-    const firstForecastDate = new Date(futureDays[0].date)
-    const lastForecastDate = new Date(lastForecast.date)
-    firstForecastDate.setHours(0, 0, 0, 0)
-    lastForecastDate.setHours(0, 0, 0, 0)
-    const daysDiff = Math.round((lastForecastDate.getTime() - firstForecastDate.getTime()) / (1000 * 60 * 60 * 24))
-    const days = daysDiff
-
-    // 5% vagy 10 cm küszöbérték a jelenlegi vízállás alapján
-    const threshold = Math.max(Math.abs(currentWaterLevel) * 0.05, 10)
-
-    if (Math.abs(change) < threshold) {
-      return {
-        type: 'stable' as const,
-        change: change,
-        percentChange: percentChange,
-        days: days,
-      }
-    } else if (change > 0) {
-      return {
-        type: 'increasing' as const,
-        change: change,
-        percentChange: percentChange,
-        days: days,
-      }
-    } else {
-      return {
-        type: 'decreasing' as const,
-        change: change,
-        percentChange: percentChange,
-        days: days,
-      }
-    }
-  }
 
   const handleSelectSuggestion = async (suggestion: LocationSearchResult) => {
     const displayName = [suggestion.name, suggestion.region].filter(Boolean).join(', ')
@@ -1857,7 +1785,7 @@ function App() {
         console.log('📍 Geolocation success', { latitude, longitude, accuracy })
 
         // Immediate coarse feedback: set coords and a temporary location query
-        const tempDisplay = 'Helymeghatározásâ€¦'
+        const tempDisplay = 'Helymeghatározás'
         setLocation(tempDisplay)
         setLocationQuery(`${latitude},${longitude}`)
         setCoordinates({ lat: latitude, lon: longitude })
@@ -2099,7 +2027,7 @@ function App() {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleExportToExcel = async () => {
     if (!user || !waterTemperatureVarId) {
-      alert('Be kell jelentkezned és meg kell várnod, amíg a vízhőmérséklet változĂł betöltődik.')
+      alert('Be kell jelentkezned és meg kell várnod, amíg a vízhőmérséklet változás betöltődik.')
       return
     }
 
@@ -2249,6 +2177,7 @@ function App() {
               src={activeFish.src}
               alt={activeFish.name}
               className="fish-image"
+              style={{ width: `${activeFish.width}px`, height: 'auto' }}
             />
           </div>
         )}
@@ -2322,172 +2251,162 @@ function App() {
           )}
           {authError && <p className="auth-error">{authError}</p>}
         </section>
-        <div className="smart-input-container" style={{ marginBottom: '2rem', position: 'relative', zIndex: 1100 }}>
-          {user ? (
-            <label style={{ fontSize: 'clamp(0.75rem, 2vw, 0.9rem)', color: '#FFFFF7', marginBottom: '0.5rem', display: 'block' }}>
-              Horgászhely keresése
-            </label>
-          ) : null}
+        {(user && !showLogbook && !showForecast && !showStatistics) && (
+          <div className="smart-input-container" style={{ marginBottom: '2rem', position: 'relative', zIndex: 1100 }}>
+            {user ? (
+              <label style={{ fontSize: 'clamp(0.75rem, 2vw, 0.9rem)', color: '#FFFFF7', marginBottom: '0.5rem', display: 'block' }}>
+                Add meg, hol horgászol vagy nyomj az automatikus helymeghatározásra!
+              </label>
+            ) : null}
 
-          <div style={{
-            display: 'flex',
-            position: 'relative',
-            width: '100%',
-            alignItems: 'stretch',
-            border: '1px solid #ccc',
-            borderRadius: '0.5rem',
-            backgroundColor: isFormDisabled ? '#e2e8f0' : '#FFFFF7',
-            transition: 'all 0.2s ease',
-          }}>
-            <div style={{ position: 'relative', flex: 1 }}>
-              <input
-                type="text"
-                value={location}
-                onChange={handleLocationChange}
-                placeholder="Település neve (pl.Tiszalök)..."
-                disabled={isFormDisabled}
-                style={{
-                  width: '100%',
-                  color: '#111827',
-                  padding: 'clamp(0.5rem, 1.5vw, 0.75rem)',
-                  paddingRight: '0.5rem',
-                  border: 'none',
-                  outline: 'none',
-                  fontSize: 'clamp(0.875rem, 2vw, 1rem)',
-                  height: '44px', // Fixed height for alignment
-                  backgroundColor: 'transparent',
-                  cursor: isFormDisabled ? 'not-allowed' : 'text',
-                  boxSizing: 'border-box',
-                }}
-                onFocus={() => {
-                  if (locationSuggestions.length > 0) {
-                    setShowSuggestions(true)
-                  }
-                }}
-                onBlur={() => {
-                  window.setTimeout(() => setShowSuggestions(false), 200)
-                }}
-              />
-              {/* Autocomplete Dropdown */}
-              {showSuggestions && locationSuggestions.length > 0 && !coordinates && (
-                <ul
+            <div style={{
+              display: 'flex',
+              position: 'relative',
+              width: '100%',
+              alignItems: 'stretch',
+              border: '1px solid #ccc',
+              borderRadius: '12px',
+              backgroundColor: isFormDisabled ? '#e2e8f0' : '#FFFFF7',
+              transition: 'all 0.2s ease',
+            }}>
+              <div style={{ position: 'relative', flex: 1 }}>
+                <input
+                  type="text"
+                  value={location}
+                  onChange={handleLocationChange}
+                  placeholder="Település neve (pl.Tiszalök)..."
+                  disabled={isFormDisabled}
                   style={{
-                    position: 'absolute',
-                    top: '100%',
-                    left: 0,
-                    right: 0,
-                    margin: 0,
-                    marginTop: '4px',
-                    padding: 0,
-                    listStyle: 'none',
-                    border: '1px solid #cbd5f5',
-                    borderRadius: '0.5rem',
-                    backgroundColor: '#FFFFF7',
-                    maxHeight: '12rem',
-                    overflowY: 'auto',
-                    boxShadow: '0 4px 12px rgba(15, 23, 42, 0.12)',
-                    zIndex: 20,
+                    width: '100%',
+                    color: '#111827',
+                    padding: 'clamp(0.5rem, 1.5vw, 0.75rem)',
+                    paddingRight: '0.5rem',
+                    border: 'none',
+                    outline: 'none',
+                    fontSize: 'clamp(0.875rem, 2vw, 1rem)',
+                    height: '44px', // Fixed height for alignment
+                    backgroundColor: 'transparent',
+                    cursor: isFormDisabled ? 'not-allowed' : 'text',
+                    boxSizing: 'border-box',
                   }}
-                >
-                  {locationSuggestions.map((suggestion) => {
-                    const displayName = [suggestion.name, suggestion.region, suggestion.country]
-                      .filter((value, index, array) => value && array.indexOf(value) === index)
-                      .join(', ')
+                  onFocus={() => {
+                    if (locationSuggestions.length > 0) {
+                      setShowSuggestions(true)
+                    }
+                  }}
+                  onBlur={() => {
+                    window.setTimeout(() => setShowSuggestions(false), 200)
+                  }}
+                />
+                {/* Autocomplete Dropdown */}
+                {showSuggestions && locationSuggestions.length > 0 && !coordinates && (
+                  <ul
+                    style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: 0,
+                      right: 0,
+                      margin: 0,
+                      marginTop: '4px',
+                      padding: 0,
+                      listStyle: 'none',
+                      border: '1px solid #cbd5f5',
+                      borderRadius: '0.5rem',
+                      backgroundColor: '#FFFFF7',
+                      maxHeight: '12rem',
+                      overflowY: 'auto',
+                      boxShadow: '0 4px 12px rgba(15, 23, 42, 0.12)',
+                      zIndex: 20,
+                    }}
+                  >
+                    {locationSuggestions.map((suggestion) => {
+                      const displayName = [suggestion.name, suggestion.region, suggestion.country]
+                        .filter((value, index, array) => value && array.indexOf(value) === index)
+                        .join(', ')
 
-                    return (
-                      <li key={`${suggestion.id} -${suggestion.lat} -${suggestion.lon} `}>
-                        <button
-                          type="button"
-                          onMouseDown={(event) => {
-                            event.preventDefault()
-                            void handleSelectSuggestion(suggestion)
-                          }}
-                          style={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'flex-start',
-                            width: '100%',
-                            padding: '0.75rem 1rem',
-                            border: 'none',
-                            background: 'transparent',
-                            cursor: 'pointer',
-                            textAlign: 'left',
-                          }}
-                          onMouseEnter={(event) => {
-                            event.currentTarget.style.backgroundColor = '#f1f5f9'
-                          }}
-                          onMouseLeave={(event) => {
-                            event.currentTarget.style.backgroundColor = 'transparent'
-                          }}
-                        >
-                          <span style={{ fontWeight: 600, color: '#0f172a' }}>{displayName}</span>
-                          <span style={{ fontSize: '0.85rem', color: '#475569' }}>
-                            {suggestion.lat.toFixed(2)}, {suggestion.lon.toFixed(2)}
-                          </span>
-                        </button>
-                      </li>
-                    )
-                  })}
-                </ul>
-              )}
+                      return (
+                        <li key={`${suggestion.id} -${suggestion.lat} -${suggestion.lon} `}>
+                          <button
+                            type="button"
+                            onMouseDown={(event) => {
+                              event.preventDefault()
+                              void handleSelectSuggestion(suggestion)
+                            }}
+                            style={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'flex-start',
+                              width: '100%',
+                              padding: '0.75rem 1rem',
+                              border: 'none',
+                              background: 'transparent',
+                              cursor: 'pointer',
+                              textAlign: 'left',
+                            }}
+                            onMouseEnter={(event) => {
+                              event.currentTarget.style.backgroundColor = '#f1f5f9'
+                            }}
+                            onMouseLeave={(event) => {
+                              event.currentTarget.style.backgroundColor = 'transparent'
+                            }}
+                          >
+                            <span style={{ fontWeight: 600, color: '#0f172a' }}>{displayName}</span>
+                            <span style={{ fontSize: '0.85rem', color: '#475569' }}>
+                              {suggestion.lat.toFixed(2)}, {suggestion.lon.toFixed(2)}
+                            </span>
+                          </button>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={handleUseCurrentLocation}
+                disabled={isFormDisabled || geolocationLoading}
+                title="Jelenlegi pozícióm használata"
+                className={`geolocation-btn ${!location.trim() && !locationQuery.trim() && !geolocationLoading ? 'pulse' : ''}`}
+              >
+                {geolocationLoading ? (
+                  <span className="spinner" style={{ fontSize: '1.2rem', animation: 'spin 1s linear infinite' }}>↻</span>
+                ) : (
+                  <img src={geolocIcon} alt="Helyzetem" style={{ width: '2rem', height: '2rem', objectFit: 'contain' }} />
+                )}
+                {/* Desktop text label optionally, but icon + tooltip is cleaner for "Integrated" look */}
+                <span className="gps-btn-text" style={{ marginLeft: '0.5rem', fontSize: '0.9rem', display: 'none' }}>Helyzetem</span>
+              </button>
             </div>
 
-            <button
-              type="button"
-              onClick={handleUseCurrentLocation}
-              disabled={isFormDisabled || geolocationLoading}
-              title="Jelenlegi pozíciĂłm használata"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '0 0.75rem',
-                border: 'none',
-                backgroundColor: 'transparent',
-                color: '#1f2937',
-                cursor: isFormDisabled || geolocationLoading ? 'not-allowed' : 'pointer',
-                transition: 'all 0.2s ease',
-                height: '44px',
-                minWidth: '44px',
-              }}
-            >
-              {geolocationLoading ? (
-                <span className="spinner" style={{ fontSize: '1.2rem', animation: 'spin 1s linear infinite' }}>↻</span>
-              ) : (
-                <img src={geolocIcon} alt="Helyzetem" style={{ width: '2rem', height: '2rem', objectFit: 'contain' }} />
+            {/* Messages and Feedback below the input group */}
+            <div style={{ marginTop: '0.5rem', minHeight: '1.2em' }}>
+              {locationSuggestionLoading && (
+                <span style={{ color: '#94a3b8', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                  <span>🔍</span> Települések kereséseâ€¦
+                </span>
               )}
-              {/* Desktop text label optionally, but icon + tooltip is cleaner for "Integrated" look */}
-              <span className="gps-btn-text" style={{ marginLeft: '0.5rem', fontSize: '0.9rem', display: 'none' }}>Helyzetem</span>
-            </button>
+
+              {locationSuggestionError && (
+                <span style={{ color: '#f87171', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                  <span>⚠️</span> {locationSuggestionError}
+                </span>
+              )}
+
+              {geolocationError && (
+                <span style={{ color: '#f87171', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                  <span>⚠️</span> {geolocationError}
+                </span>
+              )}
+
+              {!geolocationError && geolocationNameLoading && (
+                <span style={{ color: '#94a3b8', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                  <span>📍</span> Helynév pontosítása…
+                </span>
+              )}
+            </div>
           </div>
-
-          {/* Messages and Feedback below the input group */}
-          <div style={{ marginTop: '0.5rem', minHeight: '1.2em' }}>
-            {locationSuggestionLoading && (
-              <span style={{ color: '#94a3b8', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                <span>🔍</span> Települések kereséseâ€¦
-              </span>
-            )}
-
-            {locationSuggestionError && (
-              <span style={{ color: '#f87171', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                <span>⚠️</span> {locationSuggestionError}
-              </span>
-            )}
-
-            {geolocationError && (
-              <span style={{ color: '#f87171', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                <span>⚠️</span> {geolocationError}
-              </span>
-            )}
-
-            {!geolocationError && geolocationNameLoading && (
-              <span style={{ color: '#94a3b8', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                <span>📍</span> Helynév pontosítása…
-              </span>
-            )}
-          </div>
-        </div>
+        )}
 
 
 
@@ -2498,42 +2417,28 @@ function App() {
             flexDirection: 'column',
             gap: '1.25rem', // 20px
             marginBottom: '1.5rem',
-            width: '100%'
+            width: '100%',
+            maxWidth: '360px', // Match input container width
+            marginLeft: 'auto',
+            marginRight: 'auto'
           }}>
 
+            {/* 1. PRIMARY: Napló (Logbook) */}
             {/* 1. PRIMARY: Napló (Logbook) */}
             <button
               type="button"
               onClick={() => setShowLogbook(true)}
+              className="main-menu-btn"
               style={{
-                display: 'flex',
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center', // Centered
-                gap: '1rem',
-                padding: '0 1.5rem',
-                borderRadius: '18px',
-                border: 'none',
-                background: 'linear-gradient(180deg, #238A8A 0%, #1F6F78 100%)', // Deep Teal Gradient
-                color: '#F4F7F6', // Off-white
-                cursor: 'pointer',
-                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                boxShadow: '0 6px 16px rgba(0,0,0,0.18)',
+                height: '64px',
                 width: '100%',
-                height: '64px', // Tall
-                textAlign: 'center', // Centered text
-                position: 'relative',
-                overflow: 'hidden'
               }}
-              onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.98)'}
-              onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
-              onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
             >
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', zIndex: 10 }}> {/* Text on top */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', zIndex: 10 }}>
                 <span style={{
-                  fontSize: '1.1rem',
+                  fontSize: '1.2rem',
                   fontWeight: 700,
-                  letterSpacing: '0.005em',
+                  letterSpacing: '0.05em',
                   textTransform: 'uppercase',
                   lineHeight: '1.2'
                 }}>
@@ -2544,20 +2449,11 @@ function App() {
               <img
                 src={notesIcon}
                 alt=""
-                style={{
-                  position: 'absolute',
-                  top: '50%',
-                  left: '50%',
-                  transform: 'translate(-50%, -50%)',
-                  width: '50px',
-                  height: '50px',
-                  objectFit: 'contain',
-                  opacity: 0.2,
-                  zIndex: 0
-                }}
+                className="watermark-icon"
               />
             </button>
 
+            {/* 2. SECONDARY: Előrejelzések (Forecast) */}
             {/* 2. SECONDARY: Előrejelzések (Forecast) */}
             <button
               type="button"
@@ -2567,33 +2463,16 @@ function App() {
                   handleUseCurrentLocation()
                 }
               }}
+              className="main-menu-btn"
               style={{
-                display: 'flex',
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center', // Centered
-                gap: '1rem',
-                padding: '0 1.5rem',
-                borderRadius: '15px',
-                border: 'none',
-                backgroundColor: '#2C5D7D', // Deep Water Blue
-                color: '#EAF2F6',
-                cursor: 'pointer',
-                transition: 'opacity 0.2s ease',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                height: '56px',
                 width: '100%',
-                height: '52px', // Medium
-                textAlign: 'center', // Centered text
-                position: 'relative', // Relative for absolute icon
-                overflow: 'hidden'
               }}
-              onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
-              onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
             >
               <span style={{
-                fontSize: '1rem',
-                fontWeight: 500,
-                letterSpacing: '0.005em',
+                fontSize: '1.05rem',
+                fontWeight: 600,
+                letterSpacing: '0.05em',
                 textTransform: 'uppercase',
                 position: 'relative',
                 zIndex: 10
@@ -2604,50 +2483,25 @@ function App() {
               <img
                 src={forecastIcon}
                 alt=""
-                style={{
-                  position: 'absolute',
-                  top: '50%',
-                  left: '50%',
-                  transform: 'translate(-50%, -50%)',
-                  width: '40px',
-                  height: '40px',
-                  objectFit: 'contain',
-                  opacity: 0.15,
-                  zIndex: 0
-                }}
+                className="watermark-icon"
               />
             </button>
 
+            {/* 3. TERTIARY: Statisztikák (Statistics) - Utility */}
             {/* 3. TERTIARY: Statisztikák (Statistics) - Utility */}
             {records.length > 0 && (
               <button
                 type="button"
                 onClick={() => setShowStatistics(!showStatistics)}
+                className="main-menu-btn"
                 style={{
-                  display: 'flex',
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center', // Centered
-                  gap: '1rem',
-                  padding: '0 1.5rem',
-                  borderRadius: '12px',
-                  border: '1px solid rgba(255, 255, 255, 0.25)', // Subtle border
-                  backgroundColor: 'transparent',
-                  color: '#D6E2E5', // Muted text
-                  cursor: 'pointer',
-                  transition: 'background-color 0.2s ease',
+                  height: '48px',
                   width: '100%',
-                  height: '48px', // Short
-                  textAlign: 'center', // Centered text
-                  position: 'relative', // Relative for absolute icon
-                  overflow: 'hidden'
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
               >
                 <span style={{
-                  fontSize: '0.95rem',
-                  fontWeight: 400,
+                  fontSize: '1rem',
+                  fontWeight: 500,
                   position: 'relative',
                   zIndex: 10
                 }}>
@@ -2657,17 +2511,7 @@ function App() {
                 <img
                   src={statisticsIcon}
                   alt=""
-                  style={{
-                    position: 'absolute',
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    width: '36px',
-                    height: '36px',
-                    objectFit: 'contain',
-                    opacity: 0.15, // Slightly higher for visibility on transparent bg
-                    zIndex: 0
-                  }}
+                  className="watermark-icon"
                 />
               </button>
             )}
@@ -2687,7 +2531,7 @@ function App() {
           {!user ? (
             <p>Jelentkezz be és adj meg helyszínt, hogy lásd az adatokat.</p>
           ) : weatherLoading ? (
-            <p>Időjárási adatok betöltéseâ€¦</p>
+            <p>Időjárási adatok betöltése</p>
           ) : weatherError ? (
             <p style={{ color: '#dc2626' }}>{weatherError}</p>
           ) : weatherData ? (
@@ -2832,6 +2676,12 @@ function App() {
                                     }}
                                   >
                                     Legközelebbi mérőállomás: {waterData.station}
+                                    {waterData.measurements && waterData.measurements.length > 0 && (
+                                      <>
+                                        <br />
+                                        Mérés ideje: {new Date(waterData.measurements[waterData.measurements.length - 1].date).toLocaleString('hu-HU')}
+                                      </>
+                                    )}
                                   </span>
                                 </span>
                               )}
@@ -2883,13 +2733,14 @@ function App() {
                               <span className="data-field-icon">💧</span>
                               Vízállás
                             </div>
-                            <div className="data-field-label">adatok betöltéseâ€¦</div>
+                            <div className="data-field-label">adatok betöltése</div>
                           </div>
                         ) : waterData?.measurements && waterData.measurements.length > 0 ? (() => {
                           const waterValue = waterData.measurements[waterData.measurements.length - 1].value
                           const waterLevel = getWaterLevelLevel(waterValue)
                           const waterVariantClass = getVariantClass(waterLevel, 'water')
                           const waterDescription = getLevelDescription(waterLevel, 'water')
+
                           return (
                             <div className={`data-field ${waterVariantClass} `}>
                               <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -2904,67 +2755,6 @@ function App() {
                                   {waterValue.toFixed(1)}
                                 </div>
                                 <div className="data-field-label" >{waterData.unit || 'cm'}</div>
-                                <span
-                                  style={{
-                                    position: 'relative',
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    width: '14px',
-                                    height: '14px',
-                                    borderRadius: '50%',
-                                    backgroundColor: '#94a3b8',
-                                    color: '#ffffff',
-                                    fontSize: '0.625rem',
-                                    fontWeight: 600,
-                                    cursor: 'pointer',
-                                    marginLeft: 'auto',
-                                  }}
-                                  onMouseEnter={(e) => {
-                                    const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
-                                    if (tooltip) {
-                                      tooltip.style.opacity = '1'
-                                      tooltip.style.visibility = 'visible'
-                                      // Vízállás és vízhőmérséklet tooltip-jei balra jelennek meg
-                                      adjustTooltipPosition(tooltip, e.currentTarget, true)
-                                    }
-                                  }}
-                                  onMouseLeave={(e) => {
-                                    const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
-                                    if (tooltip) {
-                                      tooltip.style.opacity = '0'
-                                      tooltip.style.visibility = 'hidden'
-                                    }
-                                  }}
-                                >
-                                  i
-                                  <span
-                                    data-tooltip
-                                    style={{
-                                      position: 'absolute',
-                                      top: '50%',
-                                      right: '100%',
-                                      left: 'auto',
-                                      transform: 'translateY(-50%)',
-                                      marginRight: '5px',
-                                      marginLeft: '0',
-                                      padding: '6px 10px',
-                                      backgroundColor: '#1e293b',
-                                      color: '#ffffff',
-                                      borderRadius: '4px',
-                                      fontSize: '12px',
-                                      whiteSpace: 'nowrap',
-                                      zIndex: 1000,
-                                      pointerEvents: 'none',
-                                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
-                                      opacity: 0,
-                                      visibility: 'hidden',
-                                      transition: 'opacity 0.2s, visibility 0.2s',
-                                    }}
-                                  >
-                                    Mérés dátuma: {new Date(waterData.measurements[waterData.measurements.length - 1].date).toLocaleString('hu-HU')}
-                                  </span>
-                                </span>
                               </div>
                             </div>
                           )
@@ -2978,7 +2768,7 @@ function App() {
                               <span style={{ fontSize: '0.9rem' }}>🌡️</span>
                               Vízhőmérséklet
                             </div>
-                            <div className="data-field-label" >adatok betöltéseâ€¦</div>
+                            <div className="data-field-label" >adatok betöltése</div>
                           </div>
                         ) : waterTemperatureError ? (
                           <div className="data-field variant-temp-error">
@@ -3007,54 +2797,8 @@ function App() {
                                   {typeof tempValue === 'number' ? tempValue.toFixed(1) : tempValue}
                                 </div>
                                 <div className="data-field-label" >{waterTemperatureData.unit || '°C'}</div>
-                                <span
-                                  className="info-badge-circle"
-                                  style={{ marginLeft: 'auto' }}
-                                  onMouseEnter={(e) => {
-                                    const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
-                                    if (tooltip) {
-                                      tooltip.style.opacity = '1'
-                                      tooltip.style.visibility = 'visible'
-                                      // Vízállás és vízhőmérséklet tooltip-jei balra jelennek meg
-                                      adjustTooltipPosition(tooltip, e.currentTarget, true)
-                                    }
-                                  }}
-                                  onMouseLeave={(e) => {
-                                    const tooltip = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement
-                                    if (tooltip) {
-                                      tooltip.style.opacity = '0'
-                                      tooltip.style.visibility = 'hidden'
-                                    }
-                                  }}
-                                >
-                                  i
-                                  <span
-                                    data-tooltip
-                                    style={{
-                                      position: 'absolute',
-                                      top: '50%',
-                                      right: '100%',
-                                      left: 'auto',
-                                      transform: 'translateY(-50%)',
-                                      marginRight: '5px',
-                                      marginLeft: '0',
-                                      padding: '6px 10px',
-                                      backgroundColor: '#1e293b',
-                                      color: '#ffffff',
-                                      borderRadius: '4px',
-                                      fontSize: '12px',
-                                      whiteSpace: 'nowrap',
-                                      zIndex: 1000,
-                                      pointerEvents: 'none',
-                                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
-                                      opacity: 0,
-                                      visibility: 'hidden',
-                                      transition: 'opacity 0.2s, visibility 0.2s',
-                                    }}
-                                  >
-                                    Mérés dátuma: {new Date(waterTemperatureData.measurements[waterTemperatureData.measurements.length - 1].date).toLocaleString('hu-HU')}
-                                  </span>
-                                </span>
+                                <div className="data-field-label" >{waterTemperatureData.unit || '°C'}</div>
+
                               </div>
                             </div>
                           )
@@ -4060,7 +3804,7 @@ function App() {
                                   </p>
                                 ) : null
                               })()}
-                              {/* Grafikon: előző 3 nap, mai nap, következő 3 nap */}
+                                // Grafikon: előző 3 nap, mai nap, következő 3 nap
                               {(() => {
                                 if (!selectedRecord.forecastSnapshot?.forecasts?.[0]) return null as React.ReactNode
                                 const firstForecast = selectedRecord.forecastSnapshot.forecasts[0]
@@ -4069,6 +3813,7 @@ function App() {
 
                                 if (!firstForecast.forecasts || firstForecast.forecasts.length === 0) return null
 
+                                // Prepare data for WaterLevelChart
                                 const chartData: Array<{ date: Date; value: number; isPast: boolean; isToday: boolean; isFuture: boolean }> = []
 
                                 // Előző 3 nap
@@ -4132,161 +3877,9 @@ function App() {
                                   return null
                                 }
 
-                                // Fix skála: -100 és 800 cm között
-                                const minValue = -100
-                                const maxValue = 800
-                                const range = maxValue - minValue
-
-                                // Grafikon méretek - reszponzív (20%-kal csökkentve)
-                                const baseWidth = 432 // 540 * 0.8
-                                const baseHeight = 288 // 360 * 0.8
-                                const isMobile = window.innerWidth <= 768
-                                const padding = isMobile
-                                  ? { top: 10, right: 8, bottom: 20, left: 30 } // Kisebb padding mobilnézetben
-                                  : { top: 18, right: 18, bottom: 36, left: 45 }
-                                const chartWidth = baseWidth - padding.left - padding.right
-                                const chartHeight = baseHeight - padding.top - padding.bottom
-
-                                // Pontok koordinátái
-                                const points = chartData.map((data, index) => {
-                                  const x = padding.left + (index / (chartData.length - 1 || 1)) * chartWidth
-                                  const y = padding.top + chartHeight - ((data.value - minValue) / range) * chartHeight
-                                  return { x, y, ...data }
-                                })
-
-                                // Vonal path
-                                const pathData = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y} `).join(' ')
-
                                 return (
-                                  <div ref={savedChartRef} className="water-level-chart">
-                                    <svg
-                                      viewBox={`0 0 ${baseWidth} ${baseHeight} `}
-                                      preserveAspectRatio="xMidYMid meet"
-                                      style={{ overflow: 'visible', width: '100%', height: '100%', display: 'block' }}
-                                    >
-                                      {/* Y tengely skála */}
-                                      {[0, 0.25, 0.5, 0.75, 1].map((ratio) => {
-                                        const value = minValue + range * ratio
-                                        const y = padding.top + chartHeight - ratio * chartHeight
-                                        return (
-                                          <g key={ratio}>
-                                            <line
-                                              x1={padding.left - 5}
-                                              y1={y}
-                                              x2={padding.left}
-                                              y2={y}
-                                              stroke="#cbd5e1"
-                                              strokeWidth="1"
-                                            />
-                                            <text
-                                              x={padding.left - 8}
-                                              y={y + 3}
-                                              textAnchor="end"
-                                              fontSize="9"
-                                              fill="#64748b"
-                                            >
-                                              {value.toFixed(0)} cm
-                                            </text>
-                                          </g>
-                                        )
-                                      })}
-
-                                      {/* Grid vonalak */}
-                                      {[0, 0.25, 0.5, 0.75, 1].map((ratio) => {
-                                        const y = padding.top + chartHeight - ratio * chartHeight
-                                        return (
-                                          <line
-                                            key={`grid - ${ratio} `}
-                                            x1={padding.left}
-                                            y1={y}
-                                            x2={padding.left + chartWidth}
-                                            y2={y}
-                                            stroke="#e2e8f0"
-                                            strokeWidth="1"
-                                            strokeDasharray="2,2"
-                                          />
-                                        )
-                                      })}
-
-                                      {/* Vonal */}
-                                      <path
-                                        d={pathData}
-                                        fill="none"
-                                        stroke="#3b82f6"
-                                        strokeWidth="1.5"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                      />
-
-                                      {/* Pontok */}
-                                      {points.map((point, index) => {
-                                        const isPast = point.isPast
-                                        const isToday = point.isToday
-                                        const isFuture = point.isFuture
-                                        let color = '#3b82f6'
-                                        let radius = 6
-
-                                        if (isPast) {
-                                          color = '#64748b'
-                                          radius = 6
-                                        } else if (isToday) {
-                                          color = '#10b981'
-                                          radius = 7
-                                        } else if (isFuture) {
-                                          color = '#f59e0b'
-                                          radius = 6
-                                        }
-
-                                        return (
-                                          <g key={index}>
-                                            <circle
-                                              cx={point.x}
-                                              cy={point.y}
-                                              r={radius}
-                                              fill={color}
-                                              stroke="#ffffff"
-                                              strokeWidth="1.5"
-                                              style={{ cursor: 'pointer' }}
-                                            />
-                                            <text
-                                              x={point.x}
-                                              y={baseHeight - padding.bottom + 12}
-                                              textAnchor="middle"
-                                              fontSize="8"
-                                              fill="#64748b"
-                                            >
-                                              {point.isToday ? 'Mai nap' : (() => {
-                                                const date = point.date
-                                                const year = date.getFullYear()
-                                                const month = String(date.getMonth() + 1).padStart(2, '0')
-                                                const day = String(date.getDate()).padStart(2, '0')
-                                                return `${year}.${month}.${day} `
-                                              })()}
-                                            </text>
-                                          </g>
-                                        )
-                                      })}
-
-                                      {/* X tengely */}
-                                      <line
-                                        x1={padding.left}
-                                        y1={padding.top + chartHeight}
-                                        x2={padding.left + chartWidth}
-                                        y2={padding.top + chartHeight}
-                                        stroke="#cbd5e1"
-                                        strokeWidth="1"
-                                      />
-
-                                      {/* Y tengely */}
-                                      <line
-                                        x1={padding.left}
-                                        y1={padding.top}
-                                        x2={padding.left}
-                                        y2={padding.top + chartHeight}
-                                        stroke="#cbd5e1"
-                                        strokeWidth="1"
-                                      />
-                                    </svg>
+                                  <div ref={savedChartRef} className="water-level-chart-container" style={{ padding: '0 0.5rem' }}>
+                                    <WaterLevelChart points={chartData} />
                                   </div>
                                 )
                               })()}
@@ -4339,8 +3932,9 @@ function App() {
                 padding: window.innerWidth <= 480 ? '1.5rem' : '2rem',
                 maxWidth: window.innerWidth <= 480 ? '95vw' : '500px',
                 width: '100%',
-                maxHeight: '90vh',
-                overflowY: 'auto',
+                maxHeight: '80vh',
+                display: 'flex',
+                flexDirection: 'column',
                 boxShadow: '0 10px 25px rgba(0, 0, 0, 0.3)',
                 color: '#0f172a',
               }}
@@ -4349,12 +3943,47 @@ function App() {
               <h2
                 style={{
                   margin: '0 0 1.5rem 0',
-                  fontSize: '1.5rem',
-                  fontWeight: 600,
                   color: '#0f172a',
+                  borderBottom: '1px solid #e2e8f0',
+                  paddingBottom: '1rem',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
                 }}
               >
-                Mit fogtál?
+                <span className="fish-modal-title">Mit fogtál?</span>
+                <button
+                  type="button"
+                  onClick={handleFishPopupCancel}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '0.25rem',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '32px',
+                    height: '32px',
+                    transition: 'background-color 0.2s',
+                    color: '#64748b',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#f1f5f9'
+                    e.currentTarget.style.color = '#0f172a'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent'
+                    e.currentTarget.style.color = '#64748b'
+                  }}
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                </button>
               </h2>
 
               <div
@@ -4362,8 +3991,15 @@ function App() {
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '0.75rem',
-                  marginBottom: '2rem',
+                  marginBottom: '1.5rem',
+                  overflowY: 'auto',
+                  flex: 1,
+                  minHeight: 0,
+                  paddingRight: '6px', // Space for scrollbar
+                  paddingTop: '0.5rem',
+                  paddingBottom: '0.5rem',
                 }}
+                className="custom-scrollbar"
               >
                 {fishOptions.map((fish) => {
                   const isSelected = !!selectedFish[fish]
@@ -4371,6 +4007,7 @@ function App() {
                   return (
                     <div
                       key={fish}
+                      onClick={() => toggleFish(fish)}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -4381,6 +4018,7 @@ function App() {
                         backgroundColor: isSelected ? '#e0f2fe' : '#f3f4f6',
                         transition: 'background-color 0.2s ease',
                         border: isSelected ? '2px solid #14b8a6' : '2px solid transparent',
+                        cursor: 'pointer',
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1 }}>
@@ -4388,6 +4026,7 @@ function App() {
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => toggleFish(fish)}
+                          onClick={(e) => e.stopPropagation()}
                           style={{
                             width: window.innerWidth <= 480 ? '1.5rem' : '1.25rem',
                             height: window.innerWidth <= 480 ? '1.5rem' : '1.25rem',
@@ -4498,56 +4137,39 @@ function App() {
                   flexDirection: window.innerWidth <= 480 ? 'column' : 'row',
                   gap: '1rem',
                   justifyContent: 'flex-end',
+                  borderTop: '1px solid #e2e8f0',
+                  paddingTop: '1rem',
+                  boxShadow: '0 -4px 12px rgba(0,0,0,0.05)',
+                  zIndex: 2,
                 }}
               >
-                <button
-                  type="button"
-                  onClick={handleFishPopupCancel}
-                  style={{
-                    padding: window.innerWidth <= 480 ? '0.75rem 1.5rem' : '0.5rem 1.5rem',
-                    borderRadius: '0.5rem',
-                    border: '1px solid #d1d5db',
-                    backgroundColor: '#ffffff',
-                    color: '#374151',
-                    cursor: 'pointer',
-                    transition: 'background-color 0.2s ease',
-                    fontWeight: 500,
-                    width: window.innerWidth <= 480 ? '100%' : 'auto',
-                    minHeight: window.innerWidth <= 480 ? '44px' : 'auto',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#f9fafb'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '#ffffff'
-                  }}
-                >
-                  Mégse
-                </button>
-                <button
-                  type="button"
-                  onClick={handleFishPopupConfirm}
-                  style={{
-                    padding: window.innerWidth <= 480 ? '0.75rem 1.5rem' : '0.5rem 1.5rem',
-                    borderRadius: '0.5rem',
-                    border: '1px solid #0d9488',
-                    backgroundColor: '#14b8a6',
-                    color: '#ffffff',
-                    cursor: 'pointer',
-                    transition: 'background-color 0.2s ease',
-                    fontWeight: 500,
-                    width: window.innerWidth <= 480 ? '100%' : 'auto',
-                    minHeight: window.innerWidth <= 480 ? '44px' : 'auto',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#0d9488'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '#14b8a6'
-                  }}
-                >
-                  {editingRecordId ? 'Frissítés' : 'Mentés'}
-                </button>
+
+                {Object.keys(selectedFish).length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleFishPopupConfirm}
+                    style={{
+                      padding: window.innerWidth <= 480 ? '0.75rem 1.5rem' : '0.5rem 1.5rem',
+                      borderRadius: '0.5rem',
+                      border: '1px solid #0d9488',
+                      backgroundColor: '#14b8a6',
+                      color: '#ffffff',
+                      cursor: 'pointer',
+                      transition: 'background-color 0.2s ease',
+                      fontWeight: 500,
+                      width: window.innerWidth <= 480 ? '100%' : 'auto',
+                      minHeight: window.innerWidth <= 480 ? '44px' : 'auto',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#0d9488'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = '#14b8a6'
+                    }}
+                  >
+                    {editingRecordId ? 'Frissítés' : 'Mentés'}
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -4659,6 +4281,169 @@ function App() {
                   }}
                 >
                   Törlés
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      {/* Egyéb körülmények popup */}
+      {
+        showConditionsPopup && (
+          <div
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.7)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1000,
+              padding: '1rem',
+            }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                handleConditionsPopupCancel()
+              }
+            }}
+          >
+            <div
+              style={{
+                backgroundColor: '#FFFFF7',
+                borderRadius: '0.75rem',
+                padding: window.innerWidth <= 480 ? '1.5rem' : '2rem',
+                maxWidth: window.innerWidth <= 480 ? '95vw' : '500px',
+                width: '100%',
+                maxHeight: '80vh',
+                display: 'flex',
+                flexDirection: 'column',
+                boxShadow: '0 10px 25px rgba(0, 0, 0, 0.3)',
+                color: '#0f172a',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h2
+                style={{
+                  margin: '0 0 1.5rem 0',
+                  color: '#0f172a',
+                  borderBottom: '1px solid #e2e8f0',
+                  paddingBottom: '1rem',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}
+              >
+                <span className="conditions-modal-title">Egyéb körülmények</span>
+                <button
+                  type="button"
+                  onClick={handleConditionsPopupCancel}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '0.25rem',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '32px',
+                    height: '32px',
+                    transition: 'background-color 0.2s',
+                    color: '#64748b',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#f1f5f9'
+                    e.currentTarget.style.color = '#0f172a'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent'
+                    e.currentTarget.style.color = '#64748b'
+                  }}
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                </button>
+              </h2>
+
+              <div
+                style={{
+                  marginBottom: '1.5rem',
+                }}
+              >
+                <label
+                  htmlFor="otherConditions"
+                  style={{
+                    display: 'block',
+                    marginBottom: '0.5rem',
+                    fontSize: '0.95rem',
+                    fontWeight: 500,
+                    color: '#334155',
+                  }}
+                >
+                  Megjegyzések (pl. módszer, vízközt, ssr7...)
+                </label>
+                <textarea
+                  id="otherConditions"
+                  value={otherConditions}
+                  onChange={(e) => setOtherConditions(e.target.value)}
+                  placeholder="Írj ide egyéb információkat a fogás körülményeiről..."
+                  style={{
+                    width: '100%',
+                    minHeight: '120px',
+                    padding: '0.75rem',
+                    borderRadius: '0.5rem',
+                    border: '1px solid #cbd5e1',
+                    resize: 'vertical',
+                    fontSize: '1rem',
+                    fontFamily: 'inherit',
+                    backgroundColor: '#ffffff',
+                    color: '#0f172a',
+                    textAlign: 'center',
+                  }}
+                />
+              </div>
+
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: window.innerWidth <= 480 ? 'column' : 'row',
+                  gap: '1rem',
+                  justifyContent: 'flex-end',
+                  borderTop: '1px solid #e2e8f0',
+                  paddingTop: '1rem',
+                  boxShadow: '0 -4px 12px rgba(0,0,0,0.05)',
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={handleConditionsPopupConfirm}
+                  style={{
+                    padding: window.innerWidth <= 480 ? '0.75rem 1.5rem' : '0.5rem 1.5rem',
+                    borderRadius: '0.5rem',
+                    border: '1px solid #0d9488',
+                    backgroundColor: '#14b8a6',
+                    color: '#ffffff',
+                    cursor: 'pointer',
+                    transition: 'background-color 0.2s ease',
+                    fontWeight: 500,
+                    width: window.innerWidth <= 480 ? '100%' : 'auto',
+                    minHeight: window.innerWidth <= 480 ? '44px' : 'auto',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#0d9488'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#14b8a6'
+                  }}
+                >
+                  {editingRecordId ? 'Frissítés' : 'Mentés'}
                 </button>
               </div>
             </div>

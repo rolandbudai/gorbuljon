@@ -172,6 +172,7 @@ export async function fetchWeather(locationQuery: string, days: number = 3): Pro
   url.searchParams.set('days', days.toString())
   url.searchParams.set('aqi', 'no')
   url.searchParams.set('alerts', 'no')
+  url.searchParams.set('lang', 'hu')
 
   const response = await fetch(url.toString())
 

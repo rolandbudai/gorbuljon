@@ -227,7 +227,7 @@ export const ForecastSection: React.FC<ForecastSectionProps> = ({
                         <div style={{
                             marginBottom: '2rem',
                             backgroundColor: '#FFFFF7',
-                            padding: '1rem',
+                            padding: '1rem 0.25rem',
                             borderRadius: '0.75rem',
                             border: '1px solid #e2e8f0'
                         }}>
@@ -248,14 +248,7 @@ export const ForecastSection: React.FC<ForecastSectionProps> = ({
 
                 )}
 
-                {/* DEBUG INFO - Temporary */}
-                <div style={{ padding: '0.5rem', fontSize: '0.7rem', color: '#94a3b8', textAlign: 'center', borderTop: '1px solid #f1f5f9' }}>
-                    Debug: R:{forecastEntry?.forecasts?.length || 0} /
-                    F:{chartData.filter(p => p.isFuture).length}
-                    ({forecastEntry?.forecasts?.[0]?.date || 'n/a'})
-                    <br />
-                    Status: {debugStatus || 'No status'}
-                </div>
+
             </div>
         </div >
     )

@@ -75,12 +75,7 @@ export const LogEntryCard: React.FC<LogEntryCardProps> = ({ record, onDelete, on
 
                 {/* Quick Stats or Chevron */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#94a3b8' }}>
-                    {/* Water temp compact */}
-                    {record.waterTemperatureSnapshot?.measurements && record.waterTemperatureSnapshot.measurements.length > 0 && (
-                        <div style={{ fontSize: '0.8rem', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                            <span>🌡️ {record.waterTemperatureSnapshot.measurements[record.waterTemperatureSnapshot.measurements.length - 1].value.toFixed(1)}°C</span>
-                        </div>
-                    )}
+
                     <span style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
                         ▼
                     </span>
@@ -98,30 +93,16 @@ export const LogEntryCard: React.FC<LogEntryCardProps> = ({ record, onDelete, on
                     {/* Details Grid */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
 
-                        {/* Weather */}
-                        {record.weatherSnapshot && (
-                            <div style={{ backgroundColor: '#f8fafc', padding: '0.75rem', borderRadius: '0.5rem' }}>
-                                <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.85rem', color: '#64748b' }}>Időjárás</h4>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <span style={{ fontSize: '1.5rem' }}>🌤️</span>
-                                    <div>
-                                        <div style={{ fontSize: '0.95rem', fontWeight: 600 }}>{record.weatherSnapshot.airTemperatureC}°C</div>
-                                        <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                                            Szél: {record.weatherSnapshot.windSpeedKph} km/h
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
 
-                        {/* Water */}
-                        {record.waterDataSnapshot?.measurements && record.waterDataSnapshot.measurements.length > 0 && (
-                            <div style={{ backgroundColor: '#f8fafc', padding: '0.75rem', borderRadius: '0.5rem' }}>
-                                <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.85rem', color: '#64748b' }}>Vízállás</h4>
-                                <div style={{ fontSize: '0.95rem', fontWeight: 600 }}>
-                                    {record.waterDataSnapshot.measurements[record.waterDataSnapshot.measurements.length - 1].value} cm
+
+
+                        {/* Other Conditions */}
+                        {record.otherConditions && (
+                            <div style={{ backgroundColor: '#f8fafc', padding: '0.75rem', borderRadius: '0.5rem', gridColumn: '1 / -1' }}>
+                                <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.85rem', color: '#64748b' }}>Egyéb körülmények</h4>
+                                <div style={{ fontSize: '0.95rem', fontWeight: 600, whiteSpace: 'pre-wrap', color: '#334155' }}>
+                                    {record.otherConditions}
                                 </div>
-                                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{record.waterDataSnapshot.water}</div>
                             </div>
                         )}
 

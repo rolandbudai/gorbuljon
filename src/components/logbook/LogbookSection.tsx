@@ -17,8 +17,8 @@ export const LogbookSection: React.FC<LogbookSectionProps> = ({
     onDeleteRecord,
     onEditRecord
 }) => {
-    // Local state for filters
     const [filterYear, setFilterYear] = useState<string>('')
+    const [filterMonth, setFilterMonth] = useState<string>('')
     const [filterLocation, setFilterLocation] = useState<string>('')
 
     // Calculate available years for filter
@@ -26,6 +26,17 @@ export const LogbookSection: React.FC<LogbookSectionProps> = ({
         const years = new Set(records.map(r => r.date?.split('.')[0]).filter(Boolean))
         return Array.from(years).sort((a, b) => Number(b) - Number(a))
     }, [records])
+
+    // Calculate available months for filter (dependent on year selection potentially, but kept simple for now)
+    const availableMonths = useMemo(() => {
+        const months = new Set(
+            records
+                .filter(r => !filterYear || r.date?.startsWith(filterYear)) // Filter by year if selected
+                .map(r => r.date?.split('.')[1])
+                .filter(Boolean)
+        )
+        return Array.from(months).sort((a, b) => Number(a) - Number(b))
+    }, [records, filterYear])
 
     // Calculate available locations for filter
     const availableLocations = useMemo(() => {
@@ -42,6 +53,12 @@ export const LogbookSection: React.FC<LogbookSectionProps> = ({
                 if (year !== filterYear) return false
             }
 
+            // Month filter
+            if (filterMonth) {
+                const month = record.date?.split('.')[1]
+                if (month !== filterMonth) return false
+            }
+
             // Location filter
             if (filterLocation) {
                 if (record.locationName !== filterLocation) return false
@@ -49,7 +66,7 @@ export const LogbookSection: React.FC<LogbookSectionProps> = ({
 
             return true
         })
-    }, [records, filterYear, filterLocation])
+    }, [records, filterYear, filterMonth, filterLocation])
 
     if (!isOpen) return null
 
@@ -78,10 +95,11 @@ export const LogbookSection: React.FC<LogbookSectionProps> = ({
                 flexDirection: 'column',
                 boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
                 overflow: 'hidden',
+                position: 'relative' // For absolute positioning contexts
             }}>
                 {/* Header */}
                 <div style={{
-                    padding: '1.5rem',
+                    padding: '1.25rem 1.5rem', // Reduced padding closer to standard
                     borderBottom: '1px solid #e2e8f0',
                     display: 'flex',
                     justifyContent: 'space-between',
@@ -89,7 +107,7 @@ export const LogbookSection: React.FC<LogbookSectionProps> = ({
                     backgroundColor: '#f8fafc',
                 }}>
                     <div>
-                        <h2 style={{ margin: 0, fontSize: '1.5rem', color: '#0f172a', fontWeight: 800 }}>Fogási Napló</h2>
+                        <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a', fontWeight: 800 }}>Fogási Napló</h2>
                         <p style={{ margin: '0.25rem 0 0 0', color: '#64748b', fontSize: '0.875rem' }}>
                             {filteredRecords.length} / {records.length} rögzített horgászat
                         </p>
@@ -115,7 +133,7 @@ export const LogbookSection: React.FC<LogbookSectionProps> = ({
                     padding: '1rem 1.5rem',
                     borderBottom: '1px solid #e2e8f0',
                     display: 'flex',
-                    gap: '1rem',
+                    gap: '0.75rem', // Adjusted gap
                     flexWrap: 'wrap',
                     backgroundColor: '#ffffff',
                     alignItems: 'center',
@@ -123,7 +141,28 @@ export const LogbookSection: React.FC<LogbookSectionProps> = ({
                     {/* Year Filter */}
                     <select
                         value={filterYear}
-                        onChange={(e) => setFilterYear(e.target.value)}
+                        onChange={(e) => {
+                            setFilterYear(e.target.value)
+                            setFilterMonth('') // Reset month when year changes
+                        }}
+                        style={{
+                            padding: '0.5rem',
+                            borderRadius: '0.375rem',
+                            border: '1px solid #cbd5e1',
+                            fontSize: '0.875rem',
+                            minWidth: '110px',
+                        }}
+                    >
+                        <option value="">Év (Mind)</option>
+                        {availableYears.map(year => (
+                            <option key={year} value={year as string}>{year}</option>
+                        ))}
+                    </select>
+
+                    {/* Month Filter */}
+                    <select
+                        value={filterMonth}
+                        onChange={(e) => setFilterMonth(e.target.value)}
                         style={{
                             padding: '0.5rem',
                             borderRadius: '0.375rem',
@@ -132,9 +171,9 @@ export const LogbookSection: React.FC<LogbookSectionProps> = ({
                             minWidth: '120px',
                         }}
                     >
-                        <option value="">Összes év</option>
-                        {availableYears.map(year => (
-                            <option key={year} value={year as string}>{year}</option>
+                        <option value="">Hónap (Mind)</option>
+                        {availableMonths.map(month => (
+                            <option key={month} value={month as string}>{month}. hó</option>
                         ))}
                     </select>
 
@@ -149,17 +188,18 @@ export const LogbookSection: React.FC<LogbookSectionProps> = ({
                             fontSize: '0.875rem',
                             minWidth: '160px',
                             maxWidth: '200px',
+                            flex: 1 // Allow growing
                         }}
                     >
-                        <option value="">Összes helyszín</option>
+                        <option value="">Helyszín (Mind)</option>
                         {availableLocations.map(loc => (
                             <option key={loc} value={loc}>{loc}</option>
                         ))}
                     </select>
 
-                    {(filterYear || filterLocation) && (
+                    {(filterYear || filterMonth || filterLocation) && (
                         <button
-                            onClick={() => { setFilterYear(''); setFilterLocation('') }}
+                            onClick={() => { setFilterYear(''); setFilterMonth(''); setFilterLocation('') }}
                             style={{
                                 background: 'transparent',
                                 border: 'none',

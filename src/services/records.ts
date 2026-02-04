@@ -53,6 +53,7 @@ export type LocationRecordData = {
   forecastSnapshot?: ForecastSnapshot
   pastWaterLevelSnapshot?: PastWaterLevelSnapshot
   caughtFish?: string[] | Record<string, number> // Fogott halak listája vagy mennyiségekkel
+  otherConditions?: string // Egyéb körülmények (pl. módszer, mélység)
 }
 
 export type LocationRecord = LocationRecordData & {
@@ -85,6 +86,7 @@ const mapDoc = (uid: string, snapshot: QueryDocumentSnapshot<DocumentData>): Loc
     forecastSnapshot: data.forecastSnapshot,
     pastWaterLevelSnapshot: data.pastWaterLevelSnapshot,
     caughtFish: data.caughtFish,
+    otherConditions: data.otherConditions,
     date: data.date,
     time: data.time,
   }
@@ -109,7 +111,7 @@ export const listenToRecords = (
 ) => {
   // Próbáljuk meg először az orderBy-os lekérdezést
   const qWithOrderBy = query(recordsCollection(uid), orderBy('updatedAt', 'desc'))
-  
+
   let fallbackUnsubscribe: (() => void) | null = null
   let isUsingFallback = false
 
@@ -126,7 +128,7 @@ export const listenToRecords = (
       if (!isUsingFallback) {
         console.warn('Az orderBy lekérdezés hibát dobott, fallback megoldást használunk:', error)
         isUsingFallback = true
-        
+
         const qSimple = query(recordsCollection(uid))
         fallbackUnsubscribe = onSnapshot(
           qSimple,
