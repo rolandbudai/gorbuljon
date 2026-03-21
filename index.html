@@ -7,12 +7,26 @@
   <link rel="icon" href="/favicon_light.ico" media="(prefers-color-scheme: light)" />
   <link rel="icon" href="/favicon_dark.ico" media="(prefers-color-scheme: dark)" />
 
-  <!-- PWA & Mobile -->
-  <link rel="manifest" href="/manifest.json">
-  <meta name="theme-color" content="#215a64" />
-  <link rel="apple-touch-icon" href="/icon-192x192.png">
+  <!-- PWA & Mobile - Natív app élmény -->
+  <!-- <link rel="manifest" href="/manifest.json"> -->
+  <meta name="theme-color" content="#1a2634" />
+  <meta name="theme-color" content="#1a2634" media="(prefers-color-scheme: dark)" />
+  <meta name="theme-color" content="#215a64" media="(prefers-color-scheme: light)" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="apple-touch-icon" sizes="192x192" href="/apple-touch-icon.png">
+  
+  <!-- iOS PWA beállítások -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Pergetőnapló">
+  
+  <!-- Android PWA beállítások -->
+  <meta name="mobile-web-app-capable" content="yes">
+  
+  <!-- Teljes képernyős mód támogatás -->
+  <meta name="full-screen" content="yes">
+  <meta name="browsermode" content="application">
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta http-equiv="Permissions-Policy" content="geolocation=(self)" />

@@ -1,21 +1,17 @@
 // Fejlesztésben proxy-t használunk a CORS probléma megkerüléséhez
-// Production-ben Firebase Cloud Function proxy-t használunk
+// Production-ben Netlify Function proxy-t használunk
 const OVSZ_API_URL_PROXY = '/api/ovszws/api.php'
-const OVSZ_API_URL_DIRECT = 'https://hydroinfo.hu/WSCSS/ovszws/api.php'
-// Firebase Cloud Function URL - környezeti változóból vagy automatikusan generálva
-const getCloudFunctionUrl = (): string => {
-  const functionsUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL
-  if (functionsUrl) {
-    return functionsUrl
+// Netlify Function Proxy URL
+const NETLIFY_PROXY_URL = 'https://halnaplo-ovsz-proxy.netlify.app/.netlify/functions/ovsz-proxy'
+
+const getProxyUrl = (): string => {
+  // Ha van környezeti változóban megadott URL, azt használjuk
+  const customProxyUrl = import.meta.env.VITE_PROXY_URL
+  if (customProxyUrl) {
+    return customProxyUrl
   }
-  // Ha nincs explicit URL, próbáljuk meg generálni a project ID-ből
-  const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID
-  if (projectId) {
-    // Firebase Functions alapértelmezett region: us-central1
-    return `https://us-central1-${projectId}.cloudfunctions.net/ovszwsProxy`
-  }
-  // Fallback: közvetlen API (CORS probléma lehet)
-  return OVSZ_API_URL_DIRECT
+  // Alapértelmezett: Netlify proxy
+  return NETLIFY_PROXY_URL
 }
 
 // Típusok definiálása
@@ -106,6 +102,8 @@ export type VariableStation = {
 // Helper függvény az API hívásokhoz
 async function callApi(params: Record<string, string | number | undefined>): Promise<any> {
   const token = import.meta.env.VITE_OVSZ_API_TOKEN
+  
+  console.log('🔑 OVSZ API token ellenőrzés:', token ? `✅ (${token.substring(0, 10)}...)` : '❌ HIÁNYZIK')
 
   if (!token) {
     throw new Error('Az OVSZ API token hiányzik. Add hozzá a VITE_OVSZ_API_TOKEN változót a .env.local fájlhoz.')
@@ -113,19 +111,21 @@ async function callApi(params: Record<string, string | number | undefined>): Pro
 
   // Futásidőben ellenőrizzük, hogy dev módban vagyunk-e
   // Dev módban Vite proxy-t használunk, production-ben Firebase Cloud Function-t
-  const isDev = import.meta.env.DEV
   const isLocalhost = typeof window !== 'undefined' &&
-    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    (window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1' ||
+      window.location.hostname.startsWith('192.168.') ||
+      window.location.hostname.startsWith('10.'))
 
   let url: URL
-  if (isDev && isLocalhost) {
+  if (isLocalhost) {
     // Dev módban Vite proxy-t használunk
     url = new URL(OVSZ_API_URL_PROXY, window.location.origin)
   } else {
-    // Production módban Firebase Cloud Function proxy-t használunk
+    // Production módban Netlify Function proxy-t használunk
     // Ez megoldja a CORS problémát statikus hostingon
-    const cloudFunctionUrl = getCloudFunctionUrl()
-    url = new URL(cloudFunctionUrl)
+    const proxyUrl = getProxyUrl()
+    url = new URL(proxyUrl)
   }
 
   url.searchParams.set('token', token)
@@ -231,18 +231,25 @@ async function callApi(params: Record<string, string | number | undefined>): Pro
 export async function getVariables(): Promise<Variable[]> {
   const data = await callApi({ view: 'getvariables' })
   console.log('getVariables válasz:', data)
+  
+  let entries: any[] = []
+  
   // Az API válasz lehet objektum, ami tartalmazza a változókat egy kulcs alatt
   if (Array.isArray(data)) {
-    return data
-  }
-  // Ha objektum, próbáljuk meg megtalálni a változókat
-  if (typeof data === 'object' && data !== null) {
+    entries = data
+  } else if (typeof data === 'object' && data !== null) {
     // Lehet, hogy 'entries', 'variables', vagy más kulcs alatt vannak
-    const entries = (data as any).entries || (data as any).variables || Object.values(data)
-    if (Array.isArray(entries)) {
-      return entries
-    }
+    entries = (data as any).entries || (data as any).variables || Object.values(data)
   }
+  
+  // Konvertáljuk a varid-t számmá, mert az API stringként adja vissza
+  if (Array.isArray(entries)) {
+    return entries.map(entry => ({
+      ...entry,
+      varid: typeof entry.varid === 'string' ? parseInt(entry.varid, 10) : entry.varid
+    }))
+  }
+  
   return []
 }
 

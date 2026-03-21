@@ -21,10 +21,44 @@
     "public": "dist",
     "ignore": [
       "firebase.json",
-      "**/.*",
       "**/node_modules/**"
     ],
+    "headers": [
+      {
+        "source": "/.well-known/assetlinks.json",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ]
+      }
+    ],
     "rewrites": [
+      {
+        "source": "/.well-known/**",
+        "destination": "/.well-known/assetlinks.json"
+      },
+      {
+        "source": "/privacy-policy.html",
+        "destination": "/privacy-policy.html"
+      },
+      {
+        "source": "/policy",
+        "destination": "/policy.html"
+      },
+      {
+        "source": "/delete-account",
+        "destination": "/delete-account.html"
+      },
+      {
+        "source": "/contact",
+        "destination": "/contact.html"
+      },
+      {
+        "source": "/about",
+        "destination": "/about.html"
+      },
       {
         "source": "**",
         "destination": "/index.html"

@@ -73,7 +73,7 @@ export const LogbookSection: React.FC<LogbookSectionProps> = ({
     return (
         <div className="logbook-modal-overlay" style={{
             position: 'fixed',
-            top: 0,
+            top: 'var(--navbar-height, 70px)',
             left: 0,
             right: 0,
             bottom: 0,
@@ -81,15 +81,17 @@ export const LogbookSection: React.FC<LogbookSectionProps> = ({
             backdropFilter: 'blur(4px)',
             zIndex: 1000,
             display: 'flex',
-            alignItems: 'center',
+            alignItems: 'flex-start',
             justifyContent: 'center',
-            padding: '1rem',
+            padding: 'clamp(1rem, 3vw, 1.5rem)',
+            paddingTop: 'clamp(1rem, 3vw, 1.5rem)',
         }}>
             <div className="logbook-modal-content" style={{
                 backgroundColor: '#FFFFF7',
                 width: '100%',
                 maxWidth: '800px',
-                height: '90vh',
+                height: 'min(90vh, calc(100vh - var(--navbar-height, 70px) - 2rem))',
+                maxHeight: 'calc(100vh - var(--navbar-height, 70px) - 2rem)',
                 borderRadius: '1rem',
                 display: 'flex',
                 flexDirection: 'column',

@@ -10,7 +10,7 @@ import {
   Legend,
 } from 'chart.js'
 import type { FloatingBarChartDataPoint } from '../utils/statistics'
-import { getDataTypeConfig, getLevelDescription } from '../utils/statistics'
+import { getDataTypeConfig, getLevelDescription, getAllDataTypes } from '../utils/statistics'
 import type { DataType } from '../utils/statistics'
 
 // Chart.js regisztráció
@@ -29,7 +29,7 @@ interface StatisticsChartFloatingBarProps {
 
 export const StatisticsChartFloatingBar = React.memo(function StatisticsChartFloatingBar({ data }: StatisticsChartFloatingBarProps) {
   const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768
-  
+
   // Chart adatok memoizálva
   const chartData = useMemo(() => {
     return {
@@ -45,7 +45,7 @@ export const StatisticsChartFloatingBar = React.memo(function StatisticsChartFlo
       ],
     }
   }, [data])
-  
+
   // Chart opciók memoizálva
   const chartOptions = useMemo(() => {
     return {
@@ -76,22 +76,22 @@ export const StatisticsChartFloatingBar = React.memo(function StatisticsChartFlo
             label: (context: any) => {
               const point = data[context.dataIndex]
               if (!point) return ''
-              
+
               // Meghatározzuk az adattípust a label alapján
-              const dataTypes = require('../utils/statistics').getAllDataTypes()
+              const dataTypes = getAllDataTypes()
               const type = dataTypes.find((t: DataType) => {
                 const config = getDataTypeConfig(t)
                 return config.label === point.label
               }) as DataType | undefined
-              
+
               if (!type) return ''
-              
+
               const config = getDataTypeConfig(type)
-              const decimals = type === 'pressure' ? 0 : 
-                             type === 'airTemperature' || type === 'waterTemperature' ? 1 : 0
-              
+              const decimals = type === 'pressure' ? 0 :
+                type === 'airTemperature' || type === 'waterTemperature' ? 1 : 0
+
               const levelDescription = getLevelDescription(point.level, type)
-              
+
               return [
                 `Minimum: ${point.minValue.toFixed(decimals)}${config.unit ? ` ${config.unit}` : ''}`,
                 `Maximum: ${point.maxValue.toFixed(decimals)}${config.unit ? ` ${config.unit}` : ''}`,
@@ -167,7 +167,7 @@ export const StatisticsChartFloatingBar = React.memo(function StatisticsChartFlo
       },
     }
   }, [data, isMobile])
-  
+
   if (data.length === 0) {
     return (
       <div style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>
@@ -175,17 +175,17 @@ export const StatisticsChartFloatingBar = React.memo(function StatisticsChartFlo
       </div>
     )
   }
-  
+
   return (
-    <div 
-      className="statistics-chart-floating-bar" 
-      style={{ 
-        width: '100%', 
+    <div
+      className="statistics-chart-floating-bar"
+      style={{
+        width: '100%',
         height: isMobile ? '400px' : '500px',
         position: 'relative',
       }}
     >
-      <Bar data={chartData} options={chartOptions} />
+      <Bar data={chartData} options={chartOptions as any} />
     </div>
   )
 })

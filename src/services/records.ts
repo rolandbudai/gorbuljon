@@ -3,10 +3,12 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDocs,
   onSnapshot,
   orderBy,
   query,
   updateDoc,
+  writeBatch,
   type DocumentReference,
   type QueryDocumentSnapshot,
   type DocumentData,
@@ -196,3 +198,34 @@ export const deleteRecord = async (uid: string, recordId: string) => {
   await deleteDoc(ref)
 }
 
+/**
+ * Törli az összes rekordot egy felhasználóhoz
+ * @param uid - A felhasználó azonosítója
+ */
+export const deleteAllUserRecords = async (uid: string): Promise<number> => {
+  const q = query(recordsCollection(uid))
+  const snapshot = await getDocs(q)
+  
+  if (snapshot.empty) {
+    return 0
+  }
+
+  // Batch törlés (max 500 dokumentum batch-enként)
+  const batchSize = 500
+  let deletedCount = 0
+  
+  const docs = snapshot.docs
+  for (let i = 0; i < docs.length; i += batchSize) {
+    const batch = writeBatch(firestore)
+    const chunk = docs.slice(i, i + batchSize)
+    
+    chunk.forEach((docSnapshot) => {
+      batch.delete(docSnapshot.ref)
+    })
+    
+    await batch.commit()
+    deletedCount += chunk.length
+  }
+
+  return deletedCount
+}

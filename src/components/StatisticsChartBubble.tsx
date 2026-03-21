@@ -9,8 +9,8 @@ import {
   CategoryScale,
 } from 'chart.js'
 import type { BubbleChartDataPoint } from '../utils/statistics'
-import { 
-  getDataTypeConfig, 
+import {
+  getDataTypeConfig,
   getLevelDescription,
   getWaterLevelLevel,
   getWaterTempLevel,
@@ -40,7 +40,7 @@ interface StatisticsChartBubbleProps {
 
 export const StatisticsChartBubble = React.memo(function StatisticsChartBubble({ data, xAxisType, yAxisType }: StatisticsChartBubbleProps) {
   const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768
-  
+
   // Chart konfiguráció memoizálva
   const chartData = useMemo(() => {
     return {
@@ -59,12 +59,12 @@ export const StatisticsChartBubble = React.memo(function StatisticsChartBubble({
       ],
     }
   }, [data])
-  
+
   // Chart opciók memoizálva
   const chartOptions = useMemo(() => {
     const xConfig = getDataTypeConfig(xAxisType)
     const yConfig = getDataTypeConfig(yAxisType)
-    
+
     return {
       responsive: true,
       maintainAspectRatio: false,
@@ -87,14 +87,14 @@ export const StatisticsChartBubble = React.memo(function StatisticsChartBubble({
             label: (context: any) => {
               const point = data[context.dataIndex]
               if (!point) return ''
-              
+
               const xConfig = getDataTypeConfig(xAxisType)
               const yConfig = getDataTypeConfig(yAxisType)
-              const decimalsX = xAxisType === 'pressure' ? 0 : 
-                               xAxisType === 'airTemperature' || xAxisType === 'waterTemperature' ? 1 : 0
-              const decimalsY = yAxisType === 'pressure' ? 0 : 
-                               yAxisType === 'airTemperature' || yAxisType === 'waterTemperature' ? 1 : 0
-              
+              const decimalsX = xAxisType === 'pressure' ? 0 :
+                xAxisType === 'airTemperature' || xAxisType === 'waterTemperature' ? 1 : 0
+              const decimalsY = yAxisType === 'pressure' ? 0 :
+                yAxisType === 'airTemperature' || yAxisType === 'waterTemperature' ? 1 : 0
+
               // Szint meghatározása az X tengely alapján
               let level = 0
               if (xAxisType === 'waterLevel') {
@@ -125,9 +125,9 @@ export const StatisticsChartBubble = React.memo(function StatisticsChartBubble({
               } else if (xAxisType === 'lightChange') {
                 level = point.x === 1 ? 1 : 0
               }
-              
+
               const levelDescription = getLevelDescription(level, xAxisType)
-              
+
               return [
                 `${xConfig.label}: ${point.x.toFixed(decimalsX)}${xConfig.unit ? ` ${xConfig.unit}` : ''}`,
                 `${yConfig.label}: ${point.y.toFixed(decimalsY)}${yConfig.unit ? ` ${yConfig.unit}` : ''}`,
@@ -217,7 +217,7 @@ export const StatisticsChartBubble = React.memo(function StatisticsChartBubble({
       },
     }
   }, [data, xAxisType, yAxisType, isMobile])
-  
+
   if (data.length === 0) {
     return (
       <div style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>
@@ -225,17 +225,17 @@ export const StatisticsChartBubble = React.memo(function StatisticsChartBubble({
       </div>
     )
   }
-  
+
   return (
-    <div 
-      className="statistics-chart-bubble" 
-      style={{ 
-        width: '100%', 
+    <div
+      className="statistics-chart-bubble"
+      style={{
+        width: '100%',
         height: isMobile ? '400px' : '500px',
         position: 'relative',
       }}
     >
-      <Bubble data={chartData} options={chartOptions} />
+      <Bubble data={chartData} options={chartOptions as any} />
     </div>
   )
 })

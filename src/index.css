@@ -7,6 +7,249 @@
   color: rgba(255, 255, 247, 0.87);
   background-color: #242424;
 
+  /* Navbar height for body padding */
+  --navbar-height: 70px;
+}
+
+/* ========================================
+   NAVBAR - Minimal Transparent Design
+   ======================================== */
+.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--navbar-height);
+  z-index: 9999;
+  
+  /* Átlátszó háttér - beolvad a háttérbe */
+  background: rgba(20, 30, 40, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  
+  /* Finom alsó border */
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1rem;
+  
+  /* Finom árnyék */
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.15);
+}
+
+.navbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.navbar-logo {
+  width: 32px;
+  height: 32px;
+  opacity: 0.9;
+  filter: brightness(0) invert(1);
+}
+
+.navbar-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.9);
+  text-transform: uppercase;
+}
+
+.navbar-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.navbar-nav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.navbar-nav-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.navbar-nav-btn.active {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+/* Navbar Profile Dropdown */
+.navbar-profile-dropdown {
+  position: relative;
+}
+
+.navbar-nav-btn .dropdown-arrow {
+  width: 14px;
+  height: 14px;
+  margin-left: 0.25rem;
+  transition: transform 0.2s ease;
+}
+
+.navbar-nav-btn.active .dropdown-arrow {
+  transform: rotate(180deg);
+}
+
+.navbar-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  min-width: 180px;
+  background: rgba(20, 30, 40, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  padding: 0.5rem;
+  z-index: 10000;
+}
+
+.navbar-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.navbar-dropdown-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.navbar-dropdown-item svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.navbar-dropdown-item.danger {
+  color: rgba(239, 68, 68, 0.9);
+}
+
+.navbar-dropdown-item.danger:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.navbar-dropdown-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 0.25rem 0;
+}
+
+.navbar-nav-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.navbar-nav-btn .nav-label {
+  margin-left: 0.4rem;
+}
+
+.navbar-user {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.navbar-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  object-fit: cover;
+}
+
+.navbar-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.navbar-action-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.navbar-action-btn.danger:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.navbar-action-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Body padding for fixed navbar */
+body.has-navbar {
+  padding-top: var(--navbar-height);
+}
+
+/* Mobile responsive navbar */
+@media (max-width: 600px) {
+  .navbar {
+    padding: 0 0.75rem;
+  }
+  
+  .navbar-title {
+    display: none;
+  }
+  
+  .navbar-nav-btn .nav-label {
+    display: none;
+  }
+  
+  .navbar-nav-btn {
+    padding: 0.5rem;
+  }
+  
+  .navbar-nav {
+    gap: 0.125rem;
+  }
+}
+
+/* Design tokenek – :root-ban kell lenniük, különben var() üres marad és a világos body-szín öröklődik */
+:root {
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -481,65 +724,85 @@
   --field-border-radius: 0.75rem;
 }
 
-/* Geolocation Button Styles */
-.geolocation-btn {
+/* Geolocation Button – világos háttér, felülírja a globális button sötét hátteret */
+button.geolocation-btn,
+.smart-input-container .geolocation-btn {
   display: flex !important;
   align-items: center;
   justify-content: center;
   padding: 0 0.75rem;
   border: 1px solid transparent;
-  background-color: transparent !important;
+  background-color: #FFFFF7 !important;
   color: #1f2937;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   height: 44px;
   min-width: 44px;
   border-radius: 12px !important;
-  /* Modern rounded corners */
   position: relative;
   overflow: visible;
-  /* Allow shadow to spill out */
   margin-left: 0.5rem;
-  /* Add some spacing from input */
 }
 
-.geolocation-btn:disabled {
+button.geolocation-btn img,
+.smart-input-container .geolocation-btn img {
+  background: transparent;
+}
+
+button.geolocation-btn:disabled,
+.smart-input-container .geolocation-btn:disabled {
   cursor: not-allowed !important;
   opacity: 0.5;
   animation: none !important;
+  background-color: #e2e8f0 !important;
 }
 
-.geolocation-btn:hover {
-  background-color: rgba(0, 0, 0, 0.05) !important;
+button.geolocation-btn:hover:not(:disabled),
+.smart-input-container .geolocation-btn:hover:not(:disabled) {
+  background-color: #eeece4 !important;
   transform: translateY(-1px);
 }
 
-.geolocation-btn:active {
+button.geolocation-btn:active,
+.smart-input-container .geolocation-btn:active {
   transform: translateY(0);
 }
 
-@keyframes pulse-attention {
-  0% {
-    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
-    border-color: rgba(239, 68, 68, 0.6);
+/* Bouncing arrow animation for geolocation hint */
+@keyframes bounce-arrow {
+  0%, 100% {
+    transform: translateX(0);
   }
-
-  70% {
-    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0);
-    border-color: rgba(239, 68, 68, 0.3);
-  }
-
-  100% {
-    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
-    border-color: rgba(239, 68, 68, 0.6);
+  50% {
+    transform: translateX(6px);
   }
 }
 
-.geolocation-btn.pulse {
-  animation: pulse-attention 2s infinite;
+.geolocation-hint-arrow {
+  position: absolute;
+  right: 100%;
+  top: 0;
+  bottom: 0;
+  margin-right: 6px;
   color: #EF4444;
-  background-color: rgba(239, 68, 68, 0.05) !important;
-  /* Subtle tint */
+  font-size: 1.75rem;
+  font-weight: bold;
+  animation: bounce-arrow 0.8s ease-in-out infinite;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+  line-height: 1;
+}
+
+.geolocation-hint-arrow::before {
+  content: '➤';
+}
+
+.geolocation-btn.pulse {
+  position: relative;
 }
 
 a {
@@ -644,6 +907,7 @@ h1 {
 @media (max-width: 1024px) {
   .main-container {
     padding: clamp(1rem, 3vw, 1.5rem);
+    padding-top: calc(var(--navbar-height) + clamp(1rem, 3vw, 1.5rem));
   }
 }
 
@@ -686,6 +950,7 @@ h1 {
 
   .main-container {
     padding: 1rem 1.5rem !important;
+    padding-top: calc(var(--navbar-height) + 1rem) !important;
     box-sizing: border-box;
   }
 
@@ -1271,22 +1536,8 @@ button:focus-visible {
 
 
 /* =========================================
-   Animated Save Button
+   Mentés gomb (sötétkék)
    ========================================= */
-@keyframes gradient-xy {
-  0% {
-    background-position: 0% 50%;
-  }
-
-  50% {
-    background-position: 100% 50%;
-  }
-
-  100% {
-    background-position: 0% 50%;
-  }
-}
-
 @keyframes pulse-ring {
   0% {
     transform: scale(0.95);
@@ -1310,7 +1561,7 @@ button:focus-visible {
   min-height: 54px;
   border: none;
   border-radius: 0.75rem;
-  color: #ffffff;
+  color: #ffffff !important;
   font-weight: 700;
   font-size: 1.15rem;
   letter-spacing: 0.02em;
@@ -1320,32 +1571,32 @@ button:focus-visible {
   align-items: center;
   justify-content: center;
   gap: 0.75rem;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 
-  /* Blue and Background Green Theme (Deep Sea) */
-  /* Gradient: Royal Blue -> Teal/Sea Green -> Royal Blue */
-  background: linear-gradient(300deg, #1d4ed8, #0f766e, #2563eb, #0d9488, #1d4ed8);
-  background-size: 300% 300%;
-  animation: gradient-xy 8s ease infinite;
+  /* Egységes sötétkék háttér (fontos: ne legyen későbbi duplikált szabály / button reset) */
+  background-color: #1e3a8a !important;
+  background-image: none !important;
+  animation: none !important;
 
-  box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.4), 0 4px 6px -2px rgba(15, 118, 110, 0.3);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 8px 16px -4px rgba(30, 58, 138, 0.55), 0 4px 6px -2px rgba(15, 23, 42, 0.2);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
 }
 
 .btn-save-primary:hover {
   transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 20px 25px -5px rgba(37, 99, 235, 0.5), 0 10px 10px -5px rgba(15, 118, 110, 0.4);
-  filter: brightness(1.1);
+  background-color: #2563eb !important;
+  box-shadow: 0 14px 24px -6px rgba(37, 99, 235, 0.45), 0 6px 10px -4px rgba(15, 23, 42, 0.2);
 }
 
 .btn-save-primary:active {
-  transform: translateY(0) scale(0.96);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
-  filter: brightness(0.95);
+  transform: translateY(0) scale(0.98);
+  background-color: #172554 !important;
+  box-shadow: 0 2px 8px -2px rgba(15, 23, 42, 0.35);
 }
 
 .btn-save-primary:disabled {
-  background: #94a3b8;
+  background-color: #94a3b8 !important;
+  background-image: none !important;
   cursor: not-allowed;
   animation: none;
   transform: none;
@@ -1584,6 +1835,8 @@ body.light-mode .app-title-text {
   perspective: 1000px;
   /* 3D context */
   transform-style: preserve-3d;
+  /* Extra space below navbar */
+  margin-top: 0.5rem;
 
   /* Modern shadow és depth */
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
@@ -1628,16 +1881,15 @@ body.light-mode .app-title-text {
 
 .card-front,
 .card-back {
-  /* Aquarium Effect: Transparent Cyan Tint */
-  background: rgba(8, 145, 178, 0.25);
-  /* Cyan-600 with high transparency */
-  backdrop-filter: blur(3px);
-  /* Minimal blur for clear water look */
-  -webkit-backdrop-filter: blur(3px);
+  /* Világos, olvasható felület (modál / adatkártya) – nem átlátszó „akvárium” */
+  background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
+  color: var(--color-text-primary);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   padding: calc(var(--card-padding) * 0.7);
   border-radius: var(--card-border-radius);
-  border: 1px solid rgba(103, 232, 249, 0.3);
-  /* Cyan-200 border for "tank glass" edge */
+  border: 1px solid #e2e8f0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
 
   /* Flex layout from inline styles */
   display: flex;
@@ -1656,6 +1908,26 @@ body.light-mode .app-title-text {
   /* Reszponzív padding */
   gap: clamp(0.5rem, 1.5vw, 0.75rem);
   /* Reszponzív gap */
+}
+
+/* Modál / adatkártya: gombok olvashatóak (világos háttér + sötét szöveg, nem globális sötét gomb + örökölt világos szín) */
+.statistics-modal-content .data-card .card-front button:not(.btn-save-primary):not(.geolocation-btn),
+.statistics-modal-content .data-card .card-back button:not(.btn-save-primary):not(.geolocation-btn),
+.data-card .card-front button:not(.btn-save-primary):not(.geolocation-btn),
+.data-card .card-back button:not(.btn-save-primary):not(.geolocation-btn) {
+  background-color: #e2e8f0 !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+  font-weight: 600;
+}
+
+.statistics-modal-content .data-card .card-front button:not(.btn-save-primary):not(.geolocation-btn):hover,
+.statistics-modal-content .data-card .card-back button:not(.btn-save-primary):not(.geolocation-btn):hover,
+.data-card .card-front button:not(.btn-save-primary):not(.geolocation-btn):hover,
+.data-card .card-back button:not(.btn-save-primary):not(.geolocation-btn):hover {
+  background-color: #cbd5e1 !important;
+  color: #0f172a !important;
+  border-color: #94a3b8 !important;
 }
 
 /* Card-back padding egységes mindkét kártyán */
@@ -1759,45 +2031,45 @@ body.light-mode .app-title-text {
 
 /* Weather Air Temp variants - 7 fokozatú rendszer */
 .data-field.variant-weather--3 {
-  background-color: var(--color-bg-weather--3);
-  border-color: var(--color-border-weather--3);
-  color: var(--color-text-on-dark);
+  background-color: var(--color-bg-weather--3) !important;
+  border-color: var(--color-border-weather--3) !important;
+  color: var(--color-text-on-dark) !important;
 }
 
 .data-field.variant-weather--2 {
-  background-color: var(--color-bg-weather--2);
-  border-color: var(--color-border-weather--2);
-  color: var(--color-text-on-dark);
+  background-color: var(--color-bg-weather--2) !important;
+  border-color: var(--color-border-weather--2) !important;
+  color: var(--color-text-on-dark) !important;
 }
 
 .data-field.variant-weather--1 {
-  background-color: var(--color-bg-weather--1);
-  border-color: var(--color-border-weather--1);
-  color: var(--color-text-on-dark);
+  background-color: var(--color-bg-weather--1) !important;
+  border-color: var(--color-border-weather--1) !important;
+  color: var(--color-text-on-dark) !important;
 }
 
 .data-field.variant-weather-0 {
-  background-color: var(--color-bg-weather-0);
-  border-color: var(--color-border-weather-0);
-  color: var(--color-text-on-dark);
+  background-color: var(--color-bg-weather-0) !important;
+  border-color: var(--color-border-weather-0) !important;
+  color: var(--color-text-on-dark) !important;
 }
 
 .data-field.variant-weather-1 {
-  background-color: var(--color-bg-weather-1);
-  border-color: var(--color-border-weather-1);
-  color: var(--color-text-on-light);
+  background-color: var(--color-bg-weather-1) !important;
+  border-color: var(--color-border-weather-1) !important;
+  color: var(--color-text-on-light) !important;
 }
 
 .data-field.variant-weather-2 {
-  background-color: var(--color-bg-weather-2);
-  border-color: var(--color-border-weather-2);
-  color: var(--color-text-on-dark);
+  background-color: var(--color-bg-weather-2) !important;
+  border-color: var(--color-border-weather-2) !important;
+  color: var(--color-text-on-dark) !important;
 }
 
 .data-field.variant-weather-3 {
-  background-color: var(--color-bg-weather-3);
-  border-color: var(--color-border-weather-3);
-  color: var(--color-text-on-dark);
+  background-color: var(--color-bg-weather-3) !important;
+  border-color: var(--color-border-weather-3) !important;
+  color: var(--color-text-on-dark) !important;
 }
 
 /* Régi variant class-ok (kompatibilitás) */
@@ -1818,45 +2090,45 @@ body.light-mode .app-title-text {
 
 /* Pressure variants - 7 fokozatú rendszer */
 .data-field.variant-pressure--3 {
-  background-color: var(--color-bg-pressure--3);
-  border-color: var(--color-border-pressure--3);
-  color: var(--color-text-on-dark);
+  background-color: var(--color-bg-pressure--3) !important;
+  border-color: var(--color-border-pressure--3) !important;
+  color: var(--color-text-on-dark) !important;
 }
 
 .data-field.variant-pressure--2 {
-  background-color: var(--color-bg-pressure--2);
-  border-color: var(--color-border-pressure--2);
-  color: var(--color-text-on-dark);
+  background-color: var(--color-bg-pressure--2) !important;
+  border-color: var(--color-border-pressure--2) !important;
+  color: var(--color-text-on-dark) !important;
 }
 
 .data-field.variant-pressure--1 {
-  background-color: var(--color-bg-pressure--1);
-  border-color: var(--color-border-pressure--1);
-  color: var(--color-text-on-light);
+  background-color: var(--color-bg-pressure--1) !important;
+  border-color: var(--color-border-pressure--1) !important;
+  color: var(--color-text-on-light) !important;
 }
 
 .data-field.variant-pressure-0 {
-  background-color: var(--color-bg-pressure-0);
-  border-color: var(--color-border-pressure-0);
-  color: var(--color-text-on-light);
+  background-color: var(--color-bg-pressure-0) !important;
+  border-color: var(--color-border-pressure-0) !important;
+  color: var(--color-text-on-light) !important;
 }
 
 .data-field.variant-pressure-1 {
-  background-color: var(--color-bg-pressure-1);
-  border-color: var(--color-border-pressure-1);
-  color: var(--color-text-on-light);
+  background-color: var(--color-bg-pressure-1) !important;
+  border-color: var(--color-border-pressure-1) !important;
+  color: var(--color-text-on-light) !important;
 }
 
 .data-field.variant-pressure-2 {
-  background-color: var(--color-bg-pressure-2);
-  border-color: var(--color-border-pressure-2);
-  color: var(--color-text-on-light);
+  background-color: var(--color-bg-pressure-2) !important;
+  border-color: var(--color-border-pressure-2) !important;
+  color: var(--color-text-on-light) !important;
 }
 
 .data-field.variant-pressure-3 {
-  background-color: var(--color-bg-pressure-3);
-  border-color: var(--color-border-pressure-3);
-  color: var(--color-text-on-light);
+  background-color: var(--color-bg-pressure-3) !important;
+  border-color: var(--color-border-pressure-3) !important;
+  color: var(--color-text-on-light) !important;
 }
 
 /* Régi variant class-ok (kompatibilitás) */
@@ -1867,45 +2139,45 @@ body.light-mode .app-title-text {
 
 /* Cloud variants - 7 fokozatú rendszer */
 .data-field.variant-cloud--3 {
-  background-color: var(--color-bg-cloud--3);
-  border-color: var(--color-border-cloud--3);
-  color: var(--color-text-on-light);
+  background-color: var(--color-bg-cloud--3) !important;
+  border-color: var(--color-border-cloud--3) !important;
+  color: var(--color-text-on-light) !important;
 }
 
 .data-field.variant-cloud--2 {
-  background-color: var(--color-bg-cloud--2);
-  border-color: var(--color-border-cloud--2);
-  color: var(--color-text-on-light);
+  background-color: var(--color-bg-cloud--2) !important;
+  border-color: var(--color-border-cloud--2) !important;
+  color: var(--color-text-on-light) !important;
 }
 
 .data-field.variant-cloud--1 {
-  background-color: var(--color-bg-cloud--1);
-  border-color: var(--color-border-cloud--1);
-  color: var(--color-text-on-light);
+  background-color: var(--color-bg-cloud--1) !important;
+  border-color: var(--color-border-cloud--1) !important;
+  color: var(--color-text-on-light) !important;
 }
 
 .data-field.variant-cloud-0 {
-  background-color: var(--color-bg-cloud-0);
-  border-color: var(--color-border-cloud-0);
-  color: var(--color-text-on-light);
+  background-color: var(--color-bg-cloud-0) !important;
+  border-color: var(--color-border-cloud-0) !important;
+  color: var(--color-text-on-light) !important;
 }
 
 .data-field.variant-cloud-1 {
-  background-color: var(--color-bg-cloud-1);
-  border-color: var(--color-border-cloud-1);
-  color: var(--color-text-on-dark);
+  background-color: var(--color-bg-cloud-1) !important;
+  border-color: var(--color-border-cloud-1) !important;
+  color: var(--color-text-on-dark) !important;
 }
 
 .data-field.variant-cloud-2 {
-  background-color: var(--color-bg-cloud-2);
-  border-color: var(--color-border-cloud-2);
-  color: var(--color-text-on-dark);
+  background-color: var(--color-bg-cloud-2) !important;
+  border-color: var(--color-border-cloud-2) !important;
+  color: var(--color-text-on-dark) !important;
 }
 
 .data-field.variant-cloud-3 {
-  background-color: var(--color-bg-cloud-3);
-  border-color: var(--color-border-cloud-3);
-  color: var(--color-text-on-dark);
+  background-color: var(--color-bg-cloud-3) !important;
+  border-color: var(--color-border-cloud-3) !important;
+  color: var(--color-text-on-dark) !important;
 }
 
 /* Régi variant class-ok (kompatibilitás) */
@@ -1916,45 +2188,45 @@ body.light-mode .app-title-text {
 
 /* Rain variants - 7 fokozatú rendszer */
 .data-field.variant-rain--3 {
-  background-color: var(--color-bg-rain--3);
-  border-color: var(--color-border-rain--3);
-  color: var(--color-text-on-light);
+  background-color: var(--color-bg-rain--3) !important;
+  border-color: var(--color-border-rain--3) !important;
+  color: var(--color-text-on-light) !important;
 }
 
 .data-field.variant-rain--2 {
-  background-color: var(--color-bg-rain--2);
-  border-color: var(--color-border-rain--2);
-  color: var(--color-text-on-light);
+  background-color: var(--color-bg-rain--2) !important;
+  border-color: var(--color-border-rain--2) !important;
+  color: var(--color-text-on-light) !important;
 }
 
 .data-field.variant-rain--1 {
-  background-color: var(--color-bg-rain--1);
-  border-color: var(--color-border-rain--1);
-  color: var(--color-text-on-light);
+  background-color: var(--color-bg-rain--1) !important;
+  border-color: var(--color-border-rain--1) !important;
+  color: var(--color-text-on-light) !important;
 }
 
 .data-field.variant-rain-0 {
-  background-color: var(--color-bg-rain-0);
-  border-color: var(--color-border-rain-0);
-  color: var(--color-text-on-light);
+  background-color: var(--color-bg-rain-0) !important;
+  border-color: var(--color-border-rain-0) !important;
+  color: var(--color-text-on-light) !important;
 }
 
 .data-field.variant-rain-1 {
-  background-color: var(--color-bg-rain-1);
-  border-color: var(--color-border-rain-1);
-  color: var(--color-text-on-light);
+  background-color: var(--color-bg-rain-1) !important;
+  border-color: var(--color-border-rain-1) !important;
+  color: var(--color-text-on-light) !important;
 }
 
 .data-field.variant-rain-2 {
-  background-color: var(--color-bg-rain-2);
-  border-color: var(--color-border-rain-2);
-  color: var(--color-text-on-dark);
+  background-color: var(--color-bg-rain-2) !important;
+  border-color: var(--color-border-rain-2) !important;
+  color: var(--color-text-on-dark) !important;
 }
 
 .data-field.variant-rain-3 {
-  background-color: var(--color-bg-rain-3);
-  border-color: var(--color-border-rain-3);
-  color: var(--color-text-on-dark);
+  background-color: var(--color-bg-rain-3) !important;
+  border-color: var(--color-border-rain-3) !important;
+  color: var(--color-text-on-dark) !important;
 }
 
 /* Régi variant class-ok (kompatibilitás) */
@@ -1965,45 +2237,45 @@ body.light-mode .app-title-text {
 
 /* Wind variants - 7 fokozatú rendszer */
 .data-field.variant-wind--3 {
-  background-color: var(--color-bg-wind--3);
-  border-color: var(--color-border-wind--3);
-  color: var(--color-text-on-light);
+  background-color: var(--color-bg-wind--3) !important;
+  border-color: var(--color-border-wind--3) !important;
+  color: var(--color-text-on-light) !important;
 }
 
 .data-field.variant-wind--2 {
-  background-color: var(--color-bg-wind--2);
-  border-color: var(--color-border-wind--2);
-  color: var(--color-text-on-light);
+  background-color: var(--color-bg-wind--2) !important;
+  border-color: var(--color-border-wind--2) !important;
+  color: var(--color-text-on-light) !important;
 }
 
 .data-field.variant-wind--1 {
-  background-color: var(--color-bg-wind--1);
-  border-color: var(--color-border-wind--1);
-  color: var(--color-text-on-light);
+  background-color: var(--color-bg-wind--1) !important;
+  border-color: var(--color-border-wind--1) !important;
+  color: var(--color-text-on-light) !important;
 }
 
 .data-field.variant-wind-0 {
-  background-color: var(--color-bg-wind-0);
-  border-color: var(--color-border-wind-0);
-  color: var(--color-text-on-light);
+  background-color: var(--color-bg-wind-0) !important;
+  border-color: var(--color-border-wind-0) !important;
+  color: var(--color-text-on-light) !important;
 }
 
 .data-field.variant-wind-1 {
-  background-color: var(--color-bg-wind-1);
-  border-color: var(--color-border-wind-1);
-  color: var(--color-text-on-dark);
+  background-color: var(--color-bg-wind-1) !important;
+  border-color: var(--color-border-wind-1) !important;
+  color: var(--color-text-on-dark) !important;
 }
 
 .data-field.variant-wind-2 {
-  background-color: var(--color-bg-wind-2);
-  border-color: var(--color-border-wind-2);
-  color: var(--color-text-on-dark);
+  background-color: var(--color-bg-wind-2) !important;
+  border-color: var(--color-border-wind-2) !important;
+  color: var(--color-text-on-dark) !important;
 }
 
 .data-field.variant-wind-3 {
-  background-color: var(--color-bg-wind-3);
-  border-color: var(--color-border-wind-3);
-  color: var(--color-text-on-dark);
+  background-color: var(--color-bg-wind-3) !important;
+  border-color: var(--color-border-wind-3) !important;
+  color: var(--color-text-on-dark) !important;
 }
 
 /* Régi variant class-ok (kompatibilitás) */
@@ -2014,45 +2286,45 @@ body.light-mode .app-title-text {
 
 /* Moon / Moon Phase variants - 7 fokozatú rendszer (-3-tól +3-ig) */
 .data-field.variant-moon--3 {
-  background-color: var(--color-bg-moon--3);
-  border-color: var(--color-border-moon--3);
-  color: var(--color-text-on-light);
+  background-color: var(--color-bg-moon--3) !important;
+  border-color: var(--color-border-moon--3) !important;
+  color: var(--color-text-on-light) !important;
 }
 
 .data-field.variant-moon--2 {
-  background-color: var(--color-bg-moon--2);
-  border-color: var(--color-border-moon--2);
-  color: var(--color-text-on-light);
+  background-color: var(--color-bg-moon--2) !important;
+  border-color: var(--color-border-moon--2) !important;
+  color: var(--color-text-on-light) !important;
 }
 
 .data-field.variant-moon--1 {
-  background-color: var(--color-bg-moon--1);
-  border-color: var(--color-border-moon--1);
-  color: var(--color-text-on-light);
+  background-color: var(--color-bg-moon--1) !important;
+  border-color: var(--color-border-moon--1) !important;
+  color: var(--color-text-on-light) !important;
 }
 
 .data-field.variant-moon-0 {
-  background-color: var(--color-bg-moon-0);
-  border-color: var(--color-border-moon-0);
-  color: var(--color-text-on-light);
+  background-color: var(--color-bg-moon-0) !important;
+  border-color: var(--color-border-moon-0) !important;
+  color: var(--color-text-on-light) !important;
 }
 
 .data-field.variant-moon-1 {
-  background-color: var(--color-bg-moon-1);
-  border-color: var(--color-border-moon-1);
-  color: var(--color-text-on-light);
+  background-color: var(--color-bg-moon-1) !important;
+  border-color: var(--color-border-moon-1) !important;
+  color: var(--color-text-on-light) !important;
 }
 
 .data-field.variant-moon-2 {
-  background-color: var(--color-bg-moon-2);
-  border-color: var(--color-border-moon-2);
-  color: var(--color-text-on-light);
+  background-color: var(--color-bg-moon-2) !important;
+  border-color: var(--color-border-moon-2) !important;
+  color: var(--color-text-on-light) !important;
 }
 
 .data-field.variant-moon-3 {
-  background-color: var(--color-bg-moon-3);
-  border-color: var(--color-border-moon-3);
-  color: var(--color-text-on-light);
+  background-color: var(--color-bg-moon-3) !important;
+  border-color: var(--color-border-moon-3) !important;
+  color: var(--color-text-on-light) !important;
 }
 
 /* Régi variant class-ok (kompatibilitás) */
@@ -2063,45 +2335,45 @@ body.light-mode .app-title-text {
 
 /* UV variants - 7 fokozatú rendszer */
 .data-field.variant-uv--3 {
-  background-color: var(--color-bg-uv--3);
-  border-color: var(--color-border-uv--3);
-  color: var(--color-text-on-light);
+  background-color: var(--color-bg-uv--3) !important;
+  border-color: var(--color-border-uv--3) !important;
+  color: var(--color-text-on-light) !important;
 }
 
 .data-field.variant-uv--2 {
-  background-color: var(--color-bg-uv--2);
-  border-color: var(--color-border-uv--2);
-  color: var(--color-text-on-light);
+  background-color: var(--color-bg-uv--2) !important;
+  border-color: var(--color-border-uv--2) !important;
+  color: var(--color-text-on-light) !important;
 }
 
 .data-field.variant-uv--1 {
-  background-color: var(--color-bg-uv--1);
-  border-color: var(--color-border-uv--1);
-  color: var(--color-text-on-light);
+  background-color: var(--color-bg-uv--1) !important;
+  border-color: var(--color-border-uv--1) !important;
+  color: var(--color-text-on-light) !important;
 }
 
 .data-field.variant-uv-0 {
-  background-color: var(--color-bg-uv-0);
-  border-color: var(--color-border-uv-0);
-  color: var(--color-text-on-light);
+  background-color: var(--color-bg-uv-0) !important;
+  border-color: var(--color-border-uv-0) !important;
+  color: var(--color-text-on-light) !important;
 }
 
 .data-field.variant-uv-1 {
-  background-color: var(--color-bg-uv-1);
-  border-color: var(--color-border-uv-1);
-  color: var(--color-text-on-light);
+  background-color: var(--color-bg-uv-1) !important;
+  border-color: var(--color-border-uv-1) !important;
+  color: var(--color-text-on-light) !important;
 }
 
 .data-field.variant-uv-2 {
-  background-color: var(--color-bg-uv-2);
-  border-color: var(--color-border-uv-2);
-  color: var(--color-text-on-dark);
+  background-color: var(--color-bg-uv-2) !important;
+  border-color: var(--color-border-uv-2) !important;
+  color: var(--color-text-on-dark) !important;
 }
 
 .data-field.variant-uv-3 {
-  background-color: var(--color-bg-uv-3);
-  border-color: var(--color-border-uv-3);
-  color: var(--color-text-on-dark);
+  background-color: var(--color-bg-uv-3) !important;
+  border-color: var(--color-border-uv-3) !important;
+  color: var(--color-text-on-dark) !important;
 }
 
 /* Régi variant class-ok (kompatibilitás) */
@@ -2131,45 +2403,45 @@ body.light-mode .app-title-text {
 
 /* Water level variants - 7 fokozatú rendszer */
 .data-field.variant-water--3 {
-  background-color: var(--color-bg-variant-water--3);
-  border-color: var(--color-border-variant-water--3);
-  color: var(--color-text-on-dark);
+  background-color: var(--color-bg-variant-water--3) !important;
+  border-color: var(--color-border-variant-water--3) !important;
+  color: var(--color-text-on-dark) !important;
 }
 
 .data-field.variant-water--2 {
-  background-color: var(--color-bg-variant-water--2);
-  border-color: var(--color-border-variant-water--2);
-  color: var(--color-text-on-dark);
+  background-color: var(--color-bg-variant-water--2) !important;
+  border-color: var(--color-border-variant-water--2) !important;
+  color: var(--color-text-on-dark) !important;
 }
 
 .data-field.variant-water--1 {
-  background-color: var(--color-bg-variant-water--1);
-  border-color: var(--color-border-variant-water--1);
-  color: var(--color-text-on-dark);
+  background-color: var(--color-bg-variant-water--1) !important;
+  border-color: var(--color-border-variant-water--1) !important;
+  color: var(--color-text-on-dark) !important;
 }
 
 .data-field.variant-water-0 {
-  background-color: var(--color-bg-variant-water-0);
-  border-color: var(--color-border-variant-water-0);
-  color: var(--color-text-on-dark);
+  background-color: var(--color-bg-variant-water-0) !important;
+  border-color: var(--color-border-variant-water-0) !important;
+  color: var(--color-text-on-dark) !important;
 }
 
 .data-field.variant-water-1 {
-  background-color: var(--color-bg-variant-water-1);
-  border-color: var(--color-border-variant-water-1);
-  color: var(--color-text-on-light);
+  background-color: var(--color-bg-variant-water-1) !important;
+  border-color: var(--color-border-variant-water-1) !important;
+  color: var(--color-text-on-light) !important;
 }
 
 .data-field.variant-water-2 {
-  background-color: var(--color-bg-variant-water-2);
-  border-color: var(--color-border-variant-water-2);
-  color: var(--color-text-on-light);
+  background-color: var(--color-bg-variant-water-2) !important;
+  border-color: var(--color-border-variant-water-2) !important;
+  color: var(--color-text-on-light) !important;
 }
 
 .data-field.variant-water-3 {
-  background-color: var(--color-bg-variant-water-3);
-  border-color: var(--color-border-variant-water-3);
-  color: var(--color-text-on-dark);
+  background-color: var(--color-bg-variant-water-3) !important;
+  border-color: var(--color-border-variant-water-3) !important;
+  color: var(--color-text-on-dark) !important;
 }
 
 /* Régi variant class-ok (kompatibilitás) */
@@ -2185,45 +2457,45 @@ body.light-mode .app-title-text {
 
 /* Temperature variants - 7 fokozatú rendszer */
 .data-field.variant-temp--3 {
-  background-color: var(--color-bg-variant-temp--3);
-  border-color: var(--color-border-variant-temp--3);
-  color: var(--color-text-on-dark);
+  background-color: var(--color-bg-variant-temp--3) !important;
+  border-color: var(--color-border-variant-temp--3) !important;
+  color: var(--color-text-on-dark) !important;
 }
 
 .data-field.variant-temp--2 {
-  background-color: var(--color-bg-variant-temp--2);
-  border-color: var(--color-border-variant-temp--2);
-  color: var(--color-text-on-dark);
+  background-color: var(--color-bg-variant-temp--2) !important;
+  border-color: var(--color-border-variant-temp--2) !important;
+  color: var(--color-text-on-dark) !important;
 }
 
 .data-field.variant-temp--1 {
-  background-color: var(--color-bg-variant-temp--1);
-  border-color: var(--color-border-variant-temp--1);
-  color: var(--color-text-on-light);
+  background-color: var(--color-bg-variant-temp--1) !important;
+  border-color: var(--color-border-variant-temp--1) !important;
+  color: var(--color-text-on-light) !important;
 }
 
 .data-field.variant-temp-0 {
-  background-color: var(--color-bg-variant-temp-0);
-  border-color: var(--color-border-variant-temp-0);
-  color: var(--color-text-on-light);
+  background-color: var(--color-bg-variant-temp-0) !important;
+  border-color: var(--color-border-variant-temp-0) !important;
+  color: var(--color-text-on-light) !important;
 }
 
 .data-field.variant-temp-1 {
-  background-color: var(--color-bg-variant-temp-1);
-  border-color: var(--color-border-variant-temp-1);
-  color: var(--color-text-on-light);
+  background-color: var(--color-bg-variant-temp-1) !important;
+  border-color: var(--color-border-variant-temp-1) !important;
+  color: var(--color-text-on-light) !important;
 }
 
 .data-field.variant-temp-2 {
-  background-color: var(--color-bg-variant-temp-2);
-  border-color: var(--color-border-variant-temp-2);
-  color: var(--color-text-on-dark);
+  background-color: var(--color-bg-variant-temp-2) !important;
+  border-color: var(--color-border-variant-temp-2) !important;
+  color: var(--color-text-on-dark) !important;
 }
 
 .data-field.variant-temp-3 {
-  background-color: var(--color-bg-variant-temp-3);
-  border-color: var(--color-border-variant-temp-3);
-  color: var(--color-text-on-dark);
+  background-color: var(--color-bg-variant-temp-3) !important;
+  border-color: var(--color-border-variant-temp-3) !important;
+  color: var(--color-text-on-dark) !important;
 }
 
 /* Régi variant class-ok (kompatibilitás) */
@@ -2333,6 +2605,7 @@ body.light-mode .app-title-text {
 /* Main Container */
 .main-container {
   padding: clamp(1rem, 4vw, 2rem);
+  padding-top: calc(var(--navbar-height) + clamp(1rem, 4vw, 2rem));
   /* Reszponzív padding */
   font-family: system-ui, sans-serif;
   position: relative;
@@ -2351,6 +2624,7 @@ body.light-mode .app-title-text {
 @media (max-width: 640px) {
   .main-container {
     padding: clamp(0.75rem, 2vw, 1rem);
+    padding-top: calc(var(--navbar-height) + clamp(0.75rem, 2vw, 1rem));
   }
 }
 
@@ -2358,6 +2632,7 @@ body.light-mode .app-title-text {
 @media (max-width: 480px) {
   .main-container {
     padding: clamp(0.5rem, 2vw, 1rem);
+    padding-top: calc(var(--navbar-height) + clamp(0.5rem, 2vw, 1rem));
     max-width: 100%;
   }
 
@@ -2380,6 +2655,7 @@ body.light-mode .app-title-text {
 @media (max-width: 360px) {
   .main-container {
     padding: clamp(0.5rem, 1.5vw, 0.75rem);
+    padding-top: calc(var(--navbar-height) + clamp(0.5rem, 1.5vw, 0.75rem));
   }
 
   h1 {
@@ -3798,12 +4074,13 @@ body.light-mode .app-title-text {
 
 
 /* Base Data Field Styles (Clean definition) */
+/* NOTE: background-color removed - variant classes define backgrounds */
 .data-field {
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  background-color: var(--color-bg-card-front, rgba(255, 255, 255, 0.8));
+  /* No default background - variants handle this */
   border-radius: var(--field-border-radius, 0.75rem);
   padding: 1rem;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -4521,6 +4798,31 @@ body.light-mode .app-title-text {
   color: white;
 }
 
+.auth-button.delete-account {
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  max-width: 36px !important;
+  min-height: 36px !important;
+  max-height: 36px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  box-sizing: border-box !important;
+  justify-content: center !important;
+  align-items: center !important;
+  flex: none !important;
+  aspect-ratio: 1 / 1 !important;
+  display: flex !important;
+  border-color: rgba(239, 68, 68, 0.5);
+  color: rgba(239, 68, 68, 0.8);
+}
+
+.auth-button.delete-account:hover {
+  background-color: rgba(239, 68, 68, 0.15);
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
 .auth-button.login {
   background-color: rgba(37, 99, 235, 0.9);
   color: white;
@@ -4643,6 +4945,7 @@ body.light-mode .app-title-text {
     width: 100% !important;
     text-align: center;
     padding: 0 1.5rem !important;
+    padding-top: calc(var(--navbar-height) + 2rem) !important;
     /* Ensure no padding shifting content */
     box-sizing: border-box;
   }
@@ -4767,7 +5070,7 @@ body.light-mode .app-title-text {
 /* Statistics Modal Overlay */
 .statistics-modal-overlay {
   position: fixed;
-  top: 0;
+  top: var(--navbar-height, 70px);
   left: 0;
   right: 0;
   bottom: 0;
@@ -5069,52 +5372,6 @@ body.light-mode .app-title-text {
 
 
 /* Save Button Pulse Effect */
-@keyframes pulse-red {
-  0% {
-    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
-  }
-
-  70% {
-    box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
-  }
-
-  100% {
-    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
-  }
-}
-
-.btn-save-primary {
-  background: #ffffff !important;
-  background-image: none !important;
-  color: #0f172a;
-  border: 1px solid #e2e8f0;
-  padding: 0.75rem 1.5rem;
-  border-radius: 0.5rem;
-  font-weight: 600;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  width: 100%;
-  animation: pulse-red 2s infinite;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-}
-
-.btn-save-primary:hover {
-  background: #f8fafc !important;
-  background-image: none !important;
-  transform: translateY(-1px);
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-}
-
-.btn-save-primary:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-  animation: none;
-}
-
 /* Main Menu 3D Buttons */
 .main-menu-btn {
   display: flex !important;
@@ -5148,16 +5405,14 @@ body.light-mode .app-title-text {
 }
 
 .main-menu-btn span {
-  /* Engraved Text Effect - Targeted */
-  color: rgba(220, 230, 240, 0.95) !important;
-  /* Slightly muted white */
+  /* Engraved Text Effect - Targeted & Exaggerated */
+  color: rgba(220, 230, 240, 0.9) !important;
   text-shadow:
-    0 -1px 0 rgba(0, 0, 0, 0.8),
-    /* Sharp dark top-inner shadow */
-    0 1px 0 rgba(255, 255, 255, 0.15) !important;
-  /* Sharp light bottom highlight */
+    0 -2px 1px rgba(0, 0, 0, 0.7),
+    /* Deep dark top shadow */
+    0 2px 1px rgba(255, 255, 255, 0.25) !important;
+  /* Strong light bottom highlight */
   font-weight: 700 !important;
-  /* Enforce boldness */
 }
 
 .main-menu-btn:hover {
@@ -5187,16 +5442,18 @@ body.light-mode .app-title-text {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 48px;
-  height: 48px;
+  width: 56px;
+  height: 56px;
   object-fit: contain;
-  opacity: 0.1;
+  opacity: 0.32;
+  filter: brightness(1.4);
   z-index: 0;
   transition: all 0.3s ease;
   pointer-events: none;
 }
 
 .main-menu-btn:hover .watermark-icon {
-  transform: translate(-50%, -50%) scale(1.1) rotate(-5deg);
-  opacity: 0.15;
+  transform: translate(-50%, -50%) scale(1.08) rotate(-5deg);
+  opacity: 0.42;
+  filter: brightness(1.5);
 }

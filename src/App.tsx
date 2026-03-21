@@ -1,4 +1,4 @@
-﻿import React, { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react'
+import React, { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react'
 import * as XLSX from 'xlsx'
 
 import { useAuth } from './context/AuthContext.tsx'
@@ -31,11 +31,13 @@ import {
   addRecord,
   updateRecord,
   deleteRecord,
+  deleteAllUserRecords,
   listenToRecords,
   type Coordinates,
   type LocationRecord,
   type WeatherSnapshot,
 } from './services/records.ts'
+import { deleteCurrentUserAccount } from './firebase/auth.ts'
 import { StatisticsSection } from './components/StatisticsSection.tsx'
 import { LogbookSection } from './components/logbook/LogbookSection.tsx'
 import { ForecastSection } from './components/forecast/ForecastSection.tsx'
@@ -82,7 +84,7 @@ function App() {
   const [selectedFish, setSelectedFish] = useState<Record<string, number>>({})
   const [otherConditions, setOtherConditions] = useState<string>('')
   const [showConditionsPopup, setShowConditionsPopup] = useState(false)
-  const fishOptions = ['balin', 'csuka', 'harcsa', 'süllő', 'kősüllő', 'sügér', 'jászkeszeg', 'egyéb']
+  const fishOptions = ['balin', 'csuka', 'domolykó', 'harcsa', 'süllő', 'kősüllő', 'sügér', 'jászkeszeg', 'egyéb']
   const [authError, setAuthError] = useState<string | null>(null)
   const [geolocationLoading, setGeolocationLoading] = useState(false)
   const [geolocationError, setGeolocationError] = useState<string | null>(null)
@@ -101,8 +103,8 @@ function App() {
   const [waterTemperatureVarId, setWaterTemperatureVarId] = useState<number | null>(null)
   const [forecastData, setForecastData] = useState<ForecastEntry[] | null>(null)
   const [forecastLoading, setForecastLoading] = useState(false)
-  const [forecastError, setForecastError] = useState<string | null>(null)
-  const [forecastStationId, setForecastStationId] = useState<number | null>(null)
+  const [_forecastError, setForecastError] = useState<string | null>(null)
+  const [_forecastStationId, setForecastStationId] = useState<number | null>(null)
   const [pastWaterLevelData, setPastWaterLevelData] = useState<Array<{ entry: MeasurementEntry; measurement: Measurement }> | null>(null)
   const [_pastWaterLevelLoading, setPastWaterLevelLoading] = useState(false)
   const [_pastWaterLevelError, setPastWaterLevelError] = useState<string | null>(null)
@@ -407,7 +409,7 @@ function App() {
     const query = location.trim()
     const selectedLocationTrimmed = selectedRecord ? selectedRecord.locationName.trim() : ''
 
-    if (query.length < 2 || (selectedLocationTrimmed && query === selectedLocationTrimmed)) {
+    if (query.length < 3 || (selectedLocationTrimmed && query === selectedLocationTrimmed)) {
       setLocationSuggestions([])
       setLocationSuggestionLoading(false)
       return
@@ -433,7 +435,7 @@ function App() {
           setLocationSuggestionLoading(false)
         }
       }
-    }, 400)
+    }, 600)
 
     return () => {
       cancelled = true
@@ -445,7 +447,10 @@ function App() {
     setLocation(event.target.value)
     setLocationQuery(event.target.value)
     setCoordinates(undefined)
-    setShowSuggestions(true)
+    // Ne mutassuk a suggestions-t rögtön, csak ha már van elég karakter és van találat
+    if (event.target.value.trim().length < 3) {
+      setShowSuggestions(false)
+    }
     setLocationSuggestionError(null)
   }
 
@@ -539,36 +544,7 @@ function App() {
 
 
 
-  const handleStartEditing = (record: LocationRecord) => {
-    setEditingRecordId(record.id)
-    setLocation(record.locationName)
-    setLocationQuery(record.locationQuery)
-    if (record.coordinates) {
-      setCoordinates(record.coordinates)
-    }
 
-    // Halak betöltése
-    if (record.caughtFish) {
-      if (Array.isArray(record.caughtFish)) {
-        // Ha tömb (régi formátum), konvertáljuk objeltummá (1 db mindegyikből)
-        const fishObj: Record<string, number> = {}
-        record.caughtFish.forEach(fish => {
-          fishObj[fish] = 1
-        })
-        setSelectedFish(fishObj)
-      } else {
-        // Ha már objektum
-        setSelectedFish(record.caughtFish)
-      }
-    } else {
-      setSelectedFish({})
-    }
-
-    setShowLogbook(false)
-    // NEM állítjuk be a selectedRecordId-t, hogy ne nyíljon meg a részletes nézet
-    // setSelectedRecordId(null)
-    setOtherConditions(record.otherConditions || '')
-  }
 
   const handleSave = async () => {
     if (!user) {
@@ -603,7 +579,7 @@ function App() {
     setSaveMessage('Mentés folyamatban…')
 
     try {
-      if (editingRecordId) {
+      if (editingRecordId && user) {
         await updateRecord(user.uid, editingRecordId, {
           locationName: location,
           locationQuery: locationQuery || location,
@@ -706,6 +682,12 @@ function App() {
       return
     }
 
+    // Csak akkor töltsük be az adatokat, ha van coordinates (kiválasztott hely vagy GPS)
+    // Ez megakadályozza, hogy gépelés közben betöltődjenek az adatok
+    if (!coordinates) {
+      return
+    }
+
     const trimmedInput = location.trim()
     const trimmedQuery = locationQuery.trim()
 
@@ -744,73 +726,77 @@ function App() {
     return () => {
       cancelled = true
     }
-  }, [location, locationQuery, user])
+  }, [coordinates, location, locationQuery, user])
 
-  // Vízszint és vízhőmérséklet paraméter azonosítĂłk lekérése
+  // Vízszint és vízhőmérséklet paraméter azonosítók lekérése
   useEffect(() => {
+    console.log('🔄 Változók lekérése useEffect - user:', user ? '✅' : '❌')
+    
     if (!user) {
       setWaterLevelVarId(null)
+      setWaterTemperatureVarId(null)
       return
     }
 
     let cancelled = false
 
     const loadVariableIds = async () => {
+      console.log('🔄 loadVariableIds() indítása...')
       try {
         const variables = await getVariables()
+        console.log('🔄 getVariables() visszatért, változók száma:', variables.length)
         if (!cancelled) {
-          console.log('📋 VáltozĂłk lekérve:', variables.map(v => ({ varid: v.varid, name: v.name })))
+          console.log('📋 Változók lekérve:', variables)
+          console.log('📋 Változók nevei:', variables.map(v => v.name))
 
-          // Keresünk vízszint paramétert (lehet "vízszint", "vízállás", stb.)
-          const waterLevelVar = variables.find(
-            (v) =>
-              v.name.toLowerCase().includes('vízszint') ||
-              v.name.toLowerCase().includes('vízállás') ||
-              v.name.toLowerCase().includes('vízmérték'),
-          )
+          // Keresünk vízszint paramétert - rugalmasabb keresés
+          // Az API "Felszíni vízállás" nevet ad vissza
+          const waterLevelVar = variables.find((v) => {
+            const name = v.name.toLowerCase()
+            return name.includes('vízállás') || 
+                   name.includes('vizallas') ||
+                   name.includes('vízszint') ||
+                   name.includes('vizszint') ||
+                   (name.includes('víz') && name.includes('állás')) ||
+                   v.varid === 4 // Fallback: a vízállás varid-ja általában 4
+          })
+          
           if (waterLevelVar) {
-            console.log('✅ Vízállás változĂł találva:', { varid: waterLevelVar.varid, name: waterLevelVar.name })
+            console.log('✅ Vízállás változó találva:', { varid: waterLevelVar.varid, name: waterLevelVar.name })
             setWaterLevelVarId(waterLevelVar.varid)
           } else {
-            console.log('❌ Vízállás változĂł nem találhatĂł')
+            console.log('❌ Vízállás változó nem található')
+            console.log('🔍 Összes elérhető változó:', variables.map(v => `${v.name} (varid: ${v.varid})`))
           }
 
           // Keresünk vízhőmérséklet paramétert (vízfelszín közelében)
-          // Először prĂłbáljuk meg a pontosabb keresést (vízhő + felszín)
-          let waterTemperatureVar = variables.find(
-            (v) =>
-              (v.name.toLowerCase().includes('vízhő') || v.name.toLowerCase().includes('víz hő')) &&
-              (v.name.toLowerCase().includes('felszín') || v.name.toLowerCase().includes('felszíni')),
-          )
+          // Az API "Vízhő a vízfelszín közelében" nevet ad vissza
+          let waterTemperatureVar = variables.find((v) => {
+            const name = v.name.toLowerCase()
+            return (name.includes('vízhő') || name.includes('vizho')) &&
+                   (name.includes('felszín') || name.includes('felszin'))
+          })
 
-          // Ha nem találjuk, prĂłbáljuk meg csak a "vízhő" szĂłval (de nem a mederfenék közelében lévőt)
+          // Ha nem találjuk, próbáljuk meg csak a "vízhő" szóval (de nem a mederfenék közelében lévőt)
           if (!waterTemperatureVar) {
-            console.log('🔍 Vízhőmérséklet változĂł keresés (felszín): nem találhatĂł, prĂłbáljuk a második keresést...')
-            waterTemperatureVar = variables.find(
-              (v) =>
-                (v.name.toLowerCase().includes('vízhő') || v.name.toLowerCase().includes('víz hő')) &&
-                !v.name.toLowerCase().includes('fenék') &&
-                !v.name.toLowerCase().includes('meder'),
-            )
+            waterTemperatureVar = variables.find((v) => {
+              const name = v.name.toLowerCase()
+              return (name.includes('vízhő') || name.includes('vizho') || v.varid === 2) &&
+                     !name.includes('fenék') &&
+                     !name.includes('fenek') &&
+                     !name.includes('meder')
+            })
           }
 
           if (waterTemperatureVar) {
-            console.log('✅ Vízhőmérséklet változĂł találva:', { varid: waterTemperatureVar.varid, name: waterTemperatureVar.name })
+            console.log('✅ Vízhőmérséklet változó találva:', { varid: waterTemperatureVar.varid, name: waterTemperatureVar.name })
             setWaterTemperatureVarId(waterTemperatureVar.varid)
           } else {
-            console.log('❌ Vízhőmérséklet változĂł nem találhatĂł')
-            console.log('🔍 Elérhető változĂłk, amelyek tartalmaznak "vízhő" vagy "víz hő" szavakat:')
-            const tempVars = variables.filter(v =>
-              v.name.toLowerCase().includes('vízhő') || v.name.toLowerCase().includes('víz hő')
-            )
-            if (tempVars.length > 0) {
-              tempVars.forEach(v => console.log(`  - ${v.name} (varid: ${v.varid})`))
-            } else {
-              console.log('  Nincs ilyen változĂł')
-            }
+            console.log('❌ Vízhőmérséklet változó nem található')
           }
         }
       } catch (error) {
+        console.error('❌ Változók lekérése sikertelen:', error)
         if (!cancelled) {
           setWaterLevelVarId(null)
           setWaterTemperatureVarId(null)
@@ -1310,10 +1296,46 @@ function App() {
       setForecastError(null)
       setForecastLoading(false)
       setForecastStationId(null)
-      setStationDetails(null)
+      // setStationDetails(null)
     } catch (error) {
       console.error('Logout error:', error)
       // setAuthError('A kijelentkezés nem sikerült. Próbáld újra.') // User requested to remove this "false" message
+    }
+  }
+
+  // Fiók törlés state-ek
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleteInProgress, setDeleteInProgress] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [showProfileMenu, setShowProfileMenu] = useState(false)
+
+  const handleDeleteAccount = async () => {
+    if (!user) return
+
+    setDeleteInProgress(true)
+    setDeleteError(null)
+
+    try {
+      // 1. Töröljük az összes rekordot
+      await deleteAllUserRecords(user.uid)
+
+      // 2. Töröljük a Firebase Auth fiókot
+      await deleteCurrentUserAccount()
+
+      // 3. Állapot visszaállítása (a signOut automatikusan megtörténik a fiók törlésekor)
+      setShowDeleteConfirm(false)
+      setLocation('')
+      setSaveMessage(null)
+      setRecords([])
+      setSelectedRecordId(null)
+      setWeatherData(null)
+      setWaterData(null)
+
+    } catch (error) {
+      console.error('Delete account error:', error)
+      setDeleteError('A fiók törlése nem sikerült. Próbáld újra.')
+    } finally {
+      setDeleteInProgress(false)
     }
   }
 
@@ -1709,7 +1731,7 @@ function App() {
 
 
 
-  const handleSelectSuggestion = async (suggestion: LocationSearchResult) => {
+  const handleSelectSuggestion = (suggestion: LocationSearchResult) => {
     const displayName = [suggestion.name, suggestion.region].filter(Boolean).join(', ')
     const queryValue = suggestion.name
     const coords: Coordinates = { lat: suggestion.lat, lon: suggestion.lon }
@@ -1720,24 +1742,12 @@ function App() {
     setShowSuggestions(false)
     setLocationSuggestions([])
     setLocationSuggestionError(null)
-
-    if (!user) {
-      return
-    }
-
-    try {
-      await saveLocation({
-        locationName: displayName,
-        locationQuery: queryValue,
-        coordinates: coords,
-      }, undefined) // Automatikus mentésnél nincs hal kiválasztás
-    } catch (error) {
-      setSaveMessage('Nem sikerült menteni a kiválasztott helyszínt.')
-    }
+    // Csak betöltjük az adatokat, nem mentjük automatikusan
+    // A mentés a "Mentés" gombbal történik
   }
 
-  const handleUseCurrentLocation = () => {
-    console.log('đź”µ handleUseCurrentLocation called')
+  const handleUseCurrentLocation = async () => {
+    console.log('🔵 handleUseCurrentLocation called')
 
     if (!user) {
       console.log('❌ No user logged in')
@@ -1751,27 +1761,17 @@ function App() {
       return
     }
 
-    // Guard: don't start if a request is already running
-    if (geolocationLoading || geolocationNameLoading) {
-      console.log('⚠️ď¸Ź Geolocation already running')
+    // Secure Context Check (HTTPS or Localhost)
+    if (window.isSecureContext === false) {
+      console.error('❌ Insecure Context')
+      setGeolocationError('A helymeghatározáshoz biztonságos kapcsolat (HTTPS) szükséges. Ha telefonról próbálod, ez a funkció csak HTTPS alatt működik.')
       return
     }
 
-    // Check permission status first (if available)
-    if ('permissions' in navigator) {
-      navigator.permissions.query({ name: 'geolocation' as PermissionName })
-        .then((result) => {
-          console.log('đź” Geolocation permission status:', result.state)
-          if (result.state === 'denied') {
-            setGeolocationError('A helymeghatározás engedélye megtagadva. Kérlek, engedélyezd a böngésző beállításaiban.')
-            setGeolocationLoading(false)
-            return
-          }
-        })
-        .catch((err) => {
-          console.warn('⚠️ď¸Ź Could not check permission status:', err)
-          // Continue anyway
-        })
+    // Guard: don't start if a request is already running
+    if (geolocationLoading || geolocationNameLoading) {
+      console.log('⚠️ Geolocation already running')
+      return
     }
 
     console.log('✅ Starting geolocation request...')
@@ -2154,6 +2154,148 @@ function App() {
 
   return (
     <>
+      {/* Navbar - Minimal Transparent Design */}
+      <nav className="navbar">
+        <div className="navbar-brand" onClick={() => {
+          // Reset all views to show main/home screen
+          setShowLogbook(false)
+          setShowForecast(false)
+          setShowStatistics(false)
+          setSelectedRecordId(null)
+        }}>
+          <img src={logoImg} alt="Logo" className="navbar-logo" />
+          <span className="navbar-title">Pergetőnapló</span>
+        </div>
+        
+        <div className="navbar-nav">
+          <a
+            href="https://peca-9c7a8.web.app/about"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="navbar-nav-btn"
+            title="Az alkalmazásról"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="16" x2="12" y2="12"></line>
+              <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+            <span className="nav-label">Rólunk</span>
+          </a>
+          
+          <a
+            href="https://peca-9c7a8.web.app/policy"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="navbar-nav-btn"
+            title="Adatvédelmi irányelvek"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            </svg>
+            <span className="nav-label">Adatvédelem</span>
+          </a>
+          
+          <a
+            href="https://peca-9c7a8.web.app/contact"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="navbar-nav-btn"
+            title="Kapcsolat"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+              <polyline points="22,6 12,13 2,6"></polyline>
+            </svg>
+            <span className="nav-label">Kapcsolat</span>
+          </a>
+          
+          {user && (
+            <div className="navbar-profile-dropdown">
+              <button
+                type="button"
+                className={`navbar-nav-btn ${showProfileMenu ? 'active' : ''}`}
+                onClick={() => setShowProfileMenu(!showProfileMenu)}
+                title="Profilom"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                <span className="nav-label">Profilom</span>
+                <svg className="dropdown-arrow" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </button>
+              
+              {showProfileMenu && (
+                <div className="navbar-dropdown-menu">
+                  <button
+                    type="button"
+                    className="navbar-dropdown-item"
+                    onClick={() => {
+                      handleSignOut()
+                      setShowProfileMenu(false)
+                    }}
+                    disabled={authActionRunning}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                      <polyline points="16 17 21 12 16 7"></polyline>
+                      <line x1="21" y1="12" x2="9" y2="12"></line>
+                    </svg>
+                    Kijelentkezés
+                  </button>
+                  <div className="navbar-dropdown-divider"></div>
+                  <button
+                    type="button"
+                    className="navbar-dropdown-item danger"
+                    onClick={() => {
+                      setShowDeleteConfirm(true)
+                      setShowProfileMenu(false)
+                    }}
+                    disabled={authActionRunning || deleteInProgress}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="3 6 5 6 21 6"></polyline>
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                    Fiókom törlése
+                  </button>
+                  <a
+                    href="https://peca-9c7a8.web.app/delete-account"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="navbar-dropdown-item"
+                    onClick={() => setShowProfileMenu(false)}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <line x1="12" y1="16" x2="12" y2="12"></line>
+                      <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                    </svg>
+                    Törlési útmutató
+                  </a>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+        
+        {!user && (
+          <div className="navbar-user">
+            <button
+              type="button"
+              className="navbar-nav-btn"
+              onClick={handleSignIn}
+              disabled={authActionRunning}
+            >
+              Belépés
+            </button>
+          </div>
+        )}
+      </nav>
+
       <div className="underwater-background">
         {Array.from({ length: 10 }, (_, index) => (
           <div
@@ -2222,19 +2364,6 @@ function App() {
                   <span className="user-email">{user.email}</span>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={handleSignOut}
-                disabled={authActionRunning}
-                className="auth-button logout"
-                title="Kijelentkezés"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                  <polyline points="16 17 21 12 16 7"></polyline>
-                  <line x1="21" y1="12" x2="9" y2="12"></line>
-                </svg>
-              </button>
             </div>
           ) : (
             <div className="auth-container" style={{ justifyContent: 'center' }}>
@@ -2272,10 +2401,19 @@ function App() {
               <div style={{ position: 'relative', flex: 1 }}>
                 <input
                   type="text"
+                  name="halnaplo-location-search-field"
+                  id="halnaplo-location-input"
                   value={location}
                   onChange={handleLocationChange}
                   placeholder="Település neve (pl.Tiszalök)..."
                   disabled={isFormDisabled}
+                  autoComplete="new-password"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
+                  data-lpignore="true"
+                  data-form-type="other"
+                  inputMode="search"
                   style={{
                     width: '100%',
                     color: '#111827',
@@ -2328,8 +2466,9 @@ function App() {
                         <li key={`${suggestion.id} -${suggestion.lat} -${suggestion.lon} `}>
                           <button
                             type="button"
-                            onMouseDown={(event) => {
+                            onClick={(event) => {
                               event.preventDefault()
+                              event.stopPropagation()
                               void handleSelectSuggestion(suggestion)
                             }}
                             style={{
@@ -2368,14 +2507,22 @@ function App() {
                 disabled={isFormDisabled || geolocationLoading}
                 title="Jelenlegi pozícióm használata"
                 className={`geolocation-btn ${!location.trim() && !locationQuery.trim() && !geolocationLoading ? 'pulse' : ''}`}
+                style={{
+                  height: '38px',
+                  minWidth: '38px',
+                  padding: '0 0.5rem',
+                  position: 'relative',
+                  backgroundColor: isFormDisabled || geolocationLoading ? '#e2e8f0' : '#FFFFF7',
+                }}
               >
-                {geolocationLoading ? (
-                  <span className="spinner" style={{ fontSize: '1.2rem', animation: 'spin 1s linear infinite' }}>↻</span>
-                ) : (
-                  <img src={geolocIcon} alt="Helyzetem" style={{ width: '2rem', height: '2rem', objectFit: 'contain' }} />
+                {!location.trim() && !locationQuery.trim() && !geolocationLoading && (
+                  <span className="geolocation-hint-arrow"></span>
                 )}
-                {/* Desktop text label optionally, but icon + tooltip is cleaner for "Integrated" look */}
-                <span className="gps-btn-text" style={{ marginLeft: '0.5rem', fontSize: '0.9rem', display: 'none' }}>Helyzetem</span>
+                {geolocationLoading ? (
+                  <span className="spinner" style={{ fontSize: '1rem', animation: 'spin 1s linear infinite' }}>↻</span>
+                ) : (
+                  <img src={geolocIcon} alt="Helyzetem" style={{ width: '1.25rem', height: '1.25rem', objectFit: 'contain' }} />
+                )}
               </button>
             </div>
 
@@ -2430,7 +2577,7 @@ function App() {
               onClick={() => setShowLogbook(true)}
               className="main-menu-btn"
               style={{
-                height: '64px',
+                height: '56px',
                 width: '100%',
               }}
             >
@@ -2495,7 +2642,7 @@ function App() {
                 onClick={() => setShowStatistics(!showStatistics)}
                 className="main-menu-btn"
                 style={{
-                  height: '48px',
+                  height: '56px',
                   width: '100%',
                 }}
               >
@@ -2540,7 +2687,7 @@ function App() {
               style={{
                 zIndex: 2000,
                 position: 'fixed',
-                top: 0,
+                top: 'var(--navbar-height, 70px)',
                 left: 0,
                 right: 0,
                 bottom: 0,
@@ -2599,10 +2746,19 @@ function App() {
                       setWaterData(null)
                       setForecastData(null)
                     }}
-                    className="statistics-close-btn"
+                    style={{
+                      padding: '0.5rem 1rem',
+                      borderRadius: '0.5rem',
+                      border: 'none',
+                      background: '#e2e8f0',
+                      cursor: 'pointer',
+                      color: '#475569',
+                      fontWeight: 'bold',
+                      fontSize: '0.875rem',
+                    }}
                     aria-label="Bezárás"
                   >
-                    ×
+                    ✕ Bezárás
                   </button>
                 </div>
 
@@ -2797,8 +2953,6 @@ function App() {
                                   {typeof tempValue === 'number' ? tempValue.toFixed(1) : tempValue}
                                 </div>
                                 <div className="data-field-label" >{waterTemperatureData.unit || '°C'}</div>
-                                <div className="data-field-label" >{waterTemperatureData.unit || '°C'}</div>
-
                               </div>
                             </div>
                           )
@@ -3043,7 +3197,15 @@ function App() {
               {/* Forecast Modal */}
               <ForecastSection
                 isOpen={showForecast}
-                onClose={() => setShowForecast(false)}
+                onClose={() => {
+                  setShowForecast(false)
+                  setWeatherData(null)
+                  setWaterData(null)
+                  setForecastData(null)
+                  setLocation('')
+                  setLocationQuery('')
+                  setCoordinates(undefined)
+                }}
                 forecastEntry={forecastData && forecastData.length > 0 ? forecastData[0] : null}
                 pastData={processedPastWaterLevelData}
                 currentLevel={currentWaterLevel}
@@ -3062,7 +3224,7 @@ function App() {
                   style={{
                     zIndex: 2000,
                     position: 'fixed',
-                    top: 0,
+                    top: 'var(--navbar-height, 70px)',
                     left: 0,
                     right: 0,
                     bottom: 0,
@@ -3280,7 +3442,7 @@ function App() {
                                 const waterValue = selectedRecord.waterDataSnapshot.measurements[selectedRecord.waterDataSnapshot.measurements.length - 1].value
                                 const waterLevel = getWaterLevelLevel(waterValue)
                                 const waterVariantClass = getVariantClass(waterLevel, 'water')
-                                const waterDescription = getLevelDescriptionFromStats(waterLevel, 'water')
+                                const waterDescription = getLevelDescriptionFromStats(waterLevel, 'waterLevel')
                                 return (
                                   <div className={`data-field ${waterVariantClass} `}>
                                     <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -4450,6 +4612,122 @@ function App() {
           </div>
         )
       }
+
+      {/* Fiók törlés megerősítő dialógus */}
+      {showDeleteConfirm && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 10000,
+            padding: '1rem',
+          }}
+          onClick={() => !deleteInProgress && setShowDeleteConfirm(false)}
+        >
+          <div
+            style={{
+              backgroundColor: '#1e293b',
+              borderRadius: '1rem',
+              padding: '2rem',
+              maxWidth: '400px',
+              width: '100%',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+              border: '1px solid #334155',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="48"
+                height="48"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#ef4444"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                style={{ marginBottom: '1rem' }}
+              >
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+              <h3 style={{ color: '#f8fafc', fontSize: '1.25rem', marginBottom: '0.5rem' }}>
+                Fiók törlése
+              </h3>
+              <p style={{ color: '#94a3b8', fontSize: '0.9rem', lineHeight: '1.5' }}>
+                Biztosan törölni szeretnéd a fiókodat? Ez a művelet <strong style={{ color: '#ef4444' }}>nem visszavonható</strong>, és az összes mentett adatod (rekordok, beállítások) véglegesen törlődik.
+              </p>
+            </div>
+
+            {deleteError && (
+              <div
+                style={{
+                  backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                  border: '1px solid #ef4444',
+                  borderRadius: '0.5rem',
+                  padding: '0.75rem',
+                  marginBottom: '1rem',
+                  color: '#ef4444',
+                  fontSize: '0.85rem',
+                  textAlign: 'center',
+                }}
+              >
+                {deleteError}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '1rem', flexDirection: 'column' }}>
+              <button
+                type="button"
+                onClick={handleDeleteAccount}
+                disabled={deleteInProgress}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  borderRadius: '0.5rem',
+                  border: 'none',
+                  backgroundColor: '#ef4444',
+                  color: '#ffffff',
+                  cursor: deleteInProgress ? 'not-allowed' : 'pointer',
+                  fontWeight: 600,
+                  fontSize: '1rem',
+                  opacity: deleteInProgress ? 0.7 : 1,
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                {deleteInProgress ? 'Törlés folyamatban...' : 'Igen, törlöm a fiókomat'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={deleteInProgress}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  borderRadius: '0.5rem',
+                  border: '1px solid #475569',
+                  backgroundColor: 'transparent',
+                  color: '#94a3b8',
+                  cursor: deleteInProgress ? 'not-allowed' : 'pointer',
+                  fontWeight: 500,
+                  fontSize: '1rem',
+                  opacity: deleteInProgress ? 0.7 : 1,
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                Mégsem
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </>
   )

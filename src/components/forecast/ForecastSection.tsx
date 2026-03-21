@@ -24,7 +24,7 @@ export const ForecastSection: React.FC<ForecastSectionProps> = ({
     currentLevel,
     locationName,
     isLoading,
-    debugStatus,
+    debugStatus: _debugStatus,
     weatherData
 }) => {
     const [activeTab, setActiveTab] = useState<'water' | 'weather'>('water')

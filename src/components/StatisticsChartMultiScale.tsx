@@ -26,7 +26,7 @@ interface StatisticsChartMultiScaleProps {
 
 export const StatisticsChartMultiScale = React.memo(function StatisticsChartMultiScale({ data }: StatisticsChartMultiScaleProps) {
   const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768
-  
+
   // Chart adatok memoizálva
   // Minden adattípushoz létrehozunk egy dataset-et
   const chartData = useMemo(() => {
@@ -38,7 +38,7 @@ export const StatisticsChartMultiScale = React.memo(function StatisticsChartMult
     const globalMinFishCount = allFishCounts.length > 0 ? Math.min(...allFishCounts) : 1
     const globalMaxFishCount = allFishCounts.length > 0 ? Math.max(...allFishCounts) : 1
     const globalRange = globalMaxFishCount - globalMinFishCount
-    
+
     const datasets = data.map((typeData, typeIndex) => {
       return {
         label: typeData.label,
@@ -51,28 +51,28 @@ export const StatisticsChartMultiScale = React.memo(function StatisticsChartMult
         borderWidth: 2,
         pointRadius: typeData.values.map(value => {
           // Pont méret: fogásszám alapján (5-30px sugár)
-          return globalRange > 0 
-            ? 5 + ((value.fishCount - globalMinFishCount) / globalRange) * 25 
+          return globalRange > 0
+            ? 5 + ((value.fishCount - globalMinFishCount) / globalRange) * 25
             : 15
         }),
         pointHoverRadius: typeData.values.map(value => {
-          const baseRadius = globalRange > 0 
-            ? 5 + ((value.fishCount - globalMinFishCount) / globalRange) * 25 
+          const baseRadius = globalRange > 0
+            ? 5 + ((value.fishCount - globalMinFishCount) / globalRange) * 25
             : 15
           return baseRadius + 3 // Hover esetén nagyobb
         }),
       }
     })
-    
+
     return {
       datasets,
     }
   }, [data])
-  
+
   // Chart opciók memoizálva
   const chartOptions = useMemo(() => {
     const labels = data.map(d => d.label)
-    
+
     return {
       responsive: true,
       maintainAspectRatio: false,
@@ -94,7 +94,7 @@ export const StatisticsChartMultiScale = React.memo(function StatisticsChartMult
             title: (context: any[]) => {
               if (context.length > 0) {
                 const datasetIndex = context[0].datasetIndex
-                const dataIndex = context[0].dataIndex
+                // const _dataIndex = context[0].dataIndex
                 const typeData = data[datasetIndex]
                 if (typeData) {
                   return typeData.label
@@ -107,14 +107,14 @@ export const StatisticsChartMultiScale = React.memo(function StatisticsChartMult
               const dataIndex = context.dataIndex
               const typeData = data[datasetIndex]
               const value = typeData?.values[dataIndex]
-              
+
               if (!value || !typeData) return ''
-              
-              const decimals = typeData.dataType === 'pressure' ? 0 : 
-                             typeData.dataType === 'airTemperature' || typeData.dataType === 'waterTemperature' ? 1 : 0
-              
+
+              const decimals = typeData.dataType === 'pressure' ? 0 :
+                typeData.dataType === 'airTemperature' || typeData.dataType === 'waterTemperature' ? 1 : 0
+
               const levelDescription = getLevelDescription(value.level, typeData.dataType)
-              
+
               return [
                 `Érték: ${value.value.toFixed(decimals)}${typeData.unit ? ` ${typeData.unit}` : ''}`,
                 `Szint: ${levelDescription || value.level}`,
@@ -147,7 +147,7 @@ export const StatisticsChartMultiScale = React.memo(function StatisticsChartMult
             color: '#64748b',
             maxRotation: isMobile ? 45 : 0,
             minRotation: isMobile ? 45 : 0,
-            callback: function(value: any) {
+            callback: function (value: any) {
               const index = Math.round(value)
               if (index >= 0 && index < labels.length) {
                 return labels[index]
@@ -178,7 +178,7 @@ export const StatisticsChartMultiScale = React.memo(function StatisticsChartMult
               size: isMobile ? 10 : 12,
             },
             color: '#64748b',
-            callback: function(value: any) {
+            callback: function (value: any) {
               return value + '%'
             },
           },
@@ -211,7 +211,7 @@ export const StatisticsChartMultiScale = React.memo(function StatisticsChartMult
       },
     }
   }, [data, isMobile])
-  
+
   if (data.length === 0) {
     return (
       <div style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>
@@ -219,17 +219,17 @@ export const StatisticsChartMultiScale = React.memo(function StatisticsChartMult
       </div>
     )
   }
-  
+
   return (
-    <div 
-      className="statistics-chart-multiscale" 
-      style={{ 
-        width: '100%', 
+    <div
+      className="statistics-chart-multiscale"
+      style={{
+        width: '100%',
         height: isMobile ? '400px' : '500px',
         position: 'relative',
       }}
     >
-      <Scatter data={chartData} options={chartOptions} />
+      <Scatter data={chartData} options={chartOptions as any} />
     </div>
   )
 })

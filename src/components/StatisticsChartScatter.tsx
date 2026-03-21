@@ -26,29 +26,29 @@ interface StatisticsChartScatterProps {
 
 export const StatisticsChartScatter = React.memo(function StatisticsChartScatter({ data }: StatisticsChartScatterProps) {
   const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768
-  
+
   // Adattípusok és címkék előkészítése
   const dataTypes = getAllDataTypes()
   const dataTypeLabels = dataTypes.map(type => getDataTypeConfig(type).label)
-  
+
   // Chart adatok memoizálva
   const chartData = useMemo(() => {
     // Maximum fogásszám számítása a Y tengely skálázásához
-    const maxFishCount = data.length > 0 
-      ? Math.max(...data.map(point => point.totalFishCount))
-      : 10
-    
+    // const _maxFishCount = data.length > 0 
+    //   ? Math.max(...data.map(point => point.totalFishCount))
+    //   : 10
+
     // Maximum rekordok száma a pont méret normalizálásához
     const maxRecordCount = data.length > 0
       ? Math.max(...data.map(point => point.recordCount))
       : 1
-    
+
     // Dataset-ek létrehozása adattípus szerint
     // Minden adattípus egy dataset, minden szint egy pont
     const datasets = dataTypes.map((type, typeIndex) => {
       // Adott adattípushoz tartozó pontok
       const typePoints = data.filter(point => point.dataType === type)
-      
+
       return {
         label: getDataTypeConfig(type).label,
         data: typePoints.map(point => ({
@@ -65,13 +65,13 @@ export const StatisticsChartScatter = React.memo(function StatisticsChartScatter
         pointRadius: typePoints.map(point => {
           // Pont méret: rekordok száma alapján (6-12px)
           const range = maxRecordCount > 0 ? maxRecordCount : 1
-          return isMobile 
+          return isMobile
             ? 6 + ((point.recordCount / range) * 4) // Mobile: 6-10px
             : 8 + ((point.recordCount / range) * 4) // Desktop: 8-12px
         }),
         pointHoverRadius: typePoints.map(point => {
           const range = maxRecordCount > 0 ? maxRecordCount : 1
-          const baseRadius = isMobile 
+          const baseRadius = isMobile
             ? 6 + ((point.recordCount / range) * 4)
             : 8 + ((point.recordCount / range) * 4)
           return baseRadius + 2 // Hover esetén nagyobb
@@ -79,18 +79,18 @@ export const StatisticsChartScatter = React.memo(function StatisticsChartScatter
         borderWidth: 2,
       }
     }).filter(dataset => dataset.data.length > 0) // Csak azokat az adattípusokat, amelyeknek vannak pontjai
-    
+
     return {
       datasets,
     }
   }, [data, dataTypes, isMobile])
-  
+
   // Chart opciók memoizálva
   const chartOptions = useMemo(() => {
-    const maxFishCount = data.length > 0 
+    const maxFishCount = data.length > 0
       ? Math.max(...data.map(point => point.totalFishCount))
       : 10
-    
+
     return {
       responsive: true,
       maintainAspectRatio: false,
@@ -121,14 +121,14 @@ export const StatisticsChartScatter = React.memo(function StatisticsChartScatter
             },
             label: (context: any) => {
               const point = context.raw as any
-              
+
               if (!point || !point.dataType) return ''
-              
+
               const config = getDataTypeConfig(point.dataType)
               const levelDescription = getLevelDescription(point.level, point.dataType)
-              const decimals = point.dataType === 'pressure' ? 0 : 
-                             point.dataType === 'airTemperature' || point.dataType === 'waterTemperature' ? 1 : 0
-              
+              const decimals = point.dataType === 'pressure' ? 0 :
+                point.dataType === 'airTemperature' || point.dataType === 'waterTemperature' ? 1 : 0
+
               return [
                 `Szint: ${levelDescription} (${point.level})`,
                 `Fogások: ${point.y}`,
@@ -161,7 +161,7 @@ export const StatisticsChartScatter = React.memo(function StatisticsChartScatter
             color: '#64748b',
             maxRotation: isMobile ? 45 : 0,
             minRotation: isMobile ? 45 : 0,
-            callback: function(value: any) {
+            callback: function (value: any) {
               const index = Math.round(value)
               if (index >= 0 && index < dataTypeLabels.length) {
                 return dataTypeLabels[index]
@@ -218,7 +218,7 @@ export const StatisticsChartScatter = React.memo(function StatisticsChartScatter
       },
     }
   }, [data, dataTypeLabels, chartData, isMobile])
-  
+
   if (data.length === 0) {
     return (
       <div style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>
@@ -226,17 +226,17 @@ export const StatisticsChartScatter = React.memo(function StatisticsChartScatter
       </div>
     )
   }
-  
+
   return (
-    <div 
-      className="statistics-chart-scatter" 
-      style={{ 
-        width: '100%', 
+    <div
+      className="statistics-chart-scatter"
+      style={{
+        width: '100%',
         height: isMobile ? '350px' : '500px',
         position: 'relative',
       }}
     >
-      <Scatter data={chartData} options={chartOptions} />
+      <Scatter data={chartData} options={chartOptions as any} />
     </div>
   )
 })

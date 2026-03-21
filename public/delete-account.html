@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fiók és adatok törlése - Pergetőnapló</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #1a2634 0%, #0f172a 100%);
+      min-height: 100vh;
+      padding: 2rem;
+      color: #f8fafc;
+    }
+    
+    .container {
+      max-width: 700px;
+      margin: 0 auto;
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    
+    .icon {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 1rem;
+      background: rgba(239, 68, 68, 0.15);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .icon svg {
+      width: 32px;
+      height: 32px;
+      color: #ef4444;
+    }
+    
+    h1 {
+      font-size: 1.75rem;
+      color: #f8fafc;
+      margin-bottom: 0.5rem;
+    }
+    
+    .subtitle {
+      color: #94a3b8;
+    }
+    
+    .card {
+      background: rgba(30, 41, 59, 0.8);
+      backdrop-filter: blur(12px);
+      border-radius: 12px;
+      padding: 1.5rem;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      margin-bottom: 1.5rem;
+    }
+    
+    h2 {
+      font-size: 1.1rem;
+      color: #14b8a6;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    h2 svg {
+      width: 20px;
+      height: 20px;
+    }
+    
+    p {
+      color: #cbd5e1;
+      line-height: 1.7;
+      margin-bottom: 1rem;
+    }
+    
+    .method {
+      background: rgba(20, 184, 166, 0.1);
+      border: 1px solid rgba(20, 184, 166, 0.2);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+    
+    .method-title {
+      font-weight: 600;
+      color: #14b8a6;
+      margin-bottom: 0.5rem;
+    }
+    
+    .method ol, .method ul {
+      margin-left: 1.25rem;
+      color: #94a3b8;
+    }
+    
+    .method li {
+      margin-bottom: 0.375rem;
+    }
+    
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 0.5rem;
+    }
+    
+    .data-table th,
+    .data-table td {
+      text-align: left;
+      padding: 0.75rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .data-table th {
+      color: #94a3b8;
+      font-weight: 500;
+      font-size: 0.875rem;
+    }
+    
+    .data-table td {
+      color: #cbd5e1;
+    }
+    
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+    
+    .badge-instant {
+      background: rgba(34, 197, 94, 0.15);
+      color: #22c55e;
+    }
+    
+    .timeline {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    
+    .timeline-item {
+      display: flex;
+      gap: 1rem;
+      align-items: flex-start;
+    }
+    
+    .timeline-dot {
+      width: 12px;
+      height: 12px;
+      min-width: 12px;
+      border-radius: 50%;
+      background: #14b8a6;
+      margin-top: 0.375rem;
+    }
+    
+    .timeline-content {
+      flex: 1;
+    }
+    
+    .timeline-title {
+      color: #f8fafc;
+      font-weight: 500;
+      margin-bottom: 0.25rem;
+    }
+    
+    .timeline-desc {
+      color: #94a3b8;
+      font-size: 0.875rem;
+    }
+    
+    .email-box {
+      background: rgba(59, 130, 246, 0.1);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-radius: 8px;
+      padding: 1rem;
+      text-align: center;
+    }
+    
+    .email-box p {
+      margin-bottom: 0.75rem;
+      color: #94a3b8;
+    }
+    
+    .email-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.25rem;
+      background: rgba(59, 130, 246, 0.2);
+      border: 1px solid rgba(59, 130, 246, 0.4);
+      border-radius: 8px;
+      color: #60a5fa;
+      text-decoration: none;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+    
+    .email-link:hover {
+      background: rgba(59, 130, 246, 0.3);
+    }
+    
+    .email-link svg {
+      width: 18px;
+      height: 18px;
+    }
+    
+    .delete-btn-box {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: 8px;
+      padding: 1.25rem;
+      text-align: center;
+      margin-top: 1rem;
+    }
+    
+    .delete-btn-box p {
+      margin-bottom: 0.75rem;
+      color: #fca5a5;
+      font-size: 0.9rem;
+    }
+    
+    .delete-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.875rem 1.5rem;
+      background: #ef4444;
+      border: none;
+      border-radius: 8px;
+      color: white;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .delete-btn:hover {
+      background: #dc2626;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    }
+    
+    .delete-btn svg {
+      width: 20px;
+      height: 20px;
+    }
+    
+    .warning {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: 8px;
+      padding: 1rem;
+      color: #fca5a5;
+      font-size: 0.9rem;
+    }
+    
+    .warning strong {
+      color: #ef4444;
+    }
+    
+    .back-link {
+      display: inline-block;
+      margin-top: 1.5rem;
+      color: #64748b;
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: color 0.2s ease;
+    }
+    
+    .back-link:hover {
+      color: #94a3b8;
+    }
+    
+    .footer {
+      text-align: center;
+      margin-top: 2rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      color: #64748b;
+      font-size: 0.875rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+        </svg>
+      </div>
+      <h1>Fiók és adatok törlése</h1>
+      <p class="subtitle">Pergetőnapló alkalmazás</p>
+    </div>
+    
+    <!-- Törlési folyamat -->
+    <div class="card">
+      <h2>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
+        Hogyan törölhetem a fiókomat?
+      </h2>
+      
+      <p>Két módon kérheted a fiókod és az összes hozzád tartozó adat törlését:</p>
+      
+      <div class="method">
+        <div class="method-title">1. módszer: Automatikus törlés az alkalmazásban (azonnali)</div>
+        <ol>
+          <li>Nyisd meg a Pergetőnapló alkalmazást</li>
+          <li>Jelentkezz be a Google fiókoddal</li>
+          <li>Kattints a <strong>"Profilom"</strong> menüpontra a navigációs sávon</li>
+          <li>Válaszd a <strong>"Fiókom törlése"</strong> opciót</li>
+          <li>Erősítsd meg a törlést a felugró ablakban</li>
+          <li>A fiókod és minden adatod azonnal és véglegesen törlődik</li>
+        </ol>
+        
+        <div class="delete-btn-box">
+          <p>Kattints az alábbi gombra az alkalmazás megnyitásához:</p>
+          <a href="https://peca-9c7a8.web.app/" class="delete-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+            Fiókom törlése az alkalmazásban
+          </a>
+        </div>
+      </div>
+      
+      <div class="method">
+        <div class="method-title">2. módszer: Törlési kérelem emailben</div>
+        <p style="color: #94a3b8; margin-bottom: 0.5rem;">Ha nem tudsz bejelentkezni, vagy segítségre van szükséged:</p>
+        <ol>
+          <li>Küldj emailt az alábbi címre</li>
+          <li>Add meg a regisztrációkor használt email címet</li>
+          <li>Kérésedet <strong>14 munkanapon belül</strong> feldolgozzuk</li>
+          <li>Visszaigazolást küldünk a törlés végrehajtásáról</li>
+        </ol>
+      </div>
+      
+      <div class="email-box">
+        <p>Törlési kérelem küldése emailben:</p>
+        <a href="mailto:budairoland@gmail.com?subject=Pergetőnapló fiók törlési kérelem&body=Kérem a fiókom és az összes hozzám tartozó adat törlését.%0A%0ARegisztrált email címem: " class="email-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+            <polyline points="22,6 12,13 2,6"></polyline>
+          </svg>
+          budairoland@gmail.com
+        </a>
+      </div>
+    </div>
+    
+    <!-- Törölt adatok -->
+    <div class="card">
+      <h2>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+          <line x1="16" y1="13" x2="8" y2="13"></line>
+          <line x1="16" y1="17" x2="8" y2="17"></line>
+        </svg>
+        Milyen adatokat törlünk?
+      </h2>
+      
+      <p>A törlés során az alábbi adatok kerülnek véglegesen eltávolításra:</p>
+      
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Adattípus</th>
+            <th>Részletek</th>
+            <th>Törlés ideje</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Felhasználói fiók</td>
+            <td>Google fiók összekapcsolás, bejelentkezési adatok</td>
+            <td><span class="badge badge-instant">Azonnali</span></td>
+          </tr>
+          <tr>
+            <td>Horgászati rekordok</td>
+            <td>Összes mentett fogás (hal típusa, súly, hossz, dátum)</td>
+            <td><span class="badge badge-instant">Azonnali</span></td>
+          </tr>
+          <tr>
+            <td>Helyszínadatok</td>
+            <td>Mentett horgászhelyek, GPS koordináták</td>
+            <td><span class="badge badge-instant">Azonnali</span></td>
+          </tr>
+          <tr>
+            <td>Időjárási adatok</td>
+            <td>Fogásokhoz mentett időjárási pillanatképek</td>
+            <td><span class="badge badge-instant">Azonnali</span></td>
+          </tr>
+          <tr>
+            <td>Vízállás adatok</td>
+            <td>Mentett vízállás és vízhőmérséklet adatok</td>
+            <td><span class="badge badge-instant">Azonnali</span></td>
+          </tr>
+          <tr>
+            <td>Statisztikák</td>
+            <td>Számított statisztikák és elemzések</td>
+            <td><span class="badge badge-instant">Azonnali</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    
+    <!-- Határidők -->
+    <div class="card">
+      <h2>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+          <line x1="3" y1="10" x2="21" y2="10"></line>
+        </svg>
+        Törlési határidők
+      </h2>
+      
+      <div class="timeline">
+        <div class="timeline-item">
+          <div class="timeline-dot"></div>
+          <div class="timeline-content">
+            <div class="timeline-title">Alkalmazáson belüli törlés</div>
+            <div class="timeline-desc">Az adatok azonnal és véglegesen törlődnek a megerősítés után. Nincs várakozási idő.</div>
+          </div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot"></div>
+          <div class="timeline-content">
+            <div class="timeline-title">Email-es kérelem feldolgozása</div>
+            <div class="timeline-desc">Maximum 14 munkanapon belül feldolgozzuk a kérelmet és visszaigazolást küldünk.</div>
+          </div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot"></div>
+          <div class="timeline-content">
+            <div class="timeline-title">Adatmegőrzés törlés után</div>
+            <div class="timeline-desc">Az adatok törlése végleges. Nem őrzünk meg semmilyen adatot a törlés után, és az adatok nem állíthatók vissza.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Figyelmeztetés -->
+    <div class="warning">
+      <strong>Figyelem!</strong> A fiók törlése visszavonhatatlan. A törlés után nem tudjuk visszaállítani az adataidat. Ha újra szeretnéd használni az alkalmazást, új fiókot kell létrehoznod, de a korábbi adataid nem lesznek elérhetők.
+    </div>
+    
+    <div class="footer">
+      <a href="/" class="back-link">← Vissza az alkalmazáshoz</a>
+      <p style="margin-top: 1rem;">Utolsó frissítés: 2026. március 3.</p>
+    </div>
+  </div>
+</body>
+</html>

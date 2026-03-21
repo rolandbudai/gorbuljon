@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kapcsolat - Pergetőnapló</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #1a2634 0%, #0f172a 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      color: #f8fafc;
+    }
+    
+    .container {
+      max-width: 500px;
+      width: 100%;
+      background: rgba(30, 41, 59, 0.8);
+      backdrop-filter: blur(12px);
+      border-radius: 16px;
+      padding: 2.5rem;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      text-align: center;
+    }
+    
+    h1 {
+      font-size: 1.75rem;
+      margin-bottom: 1.5rem;
+      color: #14b8a6;
+    }
+    
+    .icon {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 1.5rem;
+      background: rgba(20, 184, 166, 0.15);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .icon svg {
+      width: 32px;
+      height: 32px;
+      color: #14b8a6;
+    }
+    
+    p {
+      color: #94a3b8;
+      line-height: 1.7;
+      margin-bottom: 1.5rem;
+    }
+    
+    .email-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.875rem 1.5rem;
+      background: rgba(20, 184, 166, 0.15);
+      border: 1px solid rgba(20, 184, 166, 0.3);
+      border-radius: 8px;
+      color: #14b8a6;
+      text-decoration: none;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+    
+    .email-link:hover {
+      background: rgba(20, 184, 166, 0.25);
+      border-color: rgba(20, 184, 166, 0.5);
+      transform: translateY(-2px);
+    }
+    
+    .email-link svg {
+      width: 18px;
+      height: 18px;
+    }
+    
+    .back-link {
+      display: inline-block;
+      margin-top: 2rem;
+      color: #64748b;
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: color 0.2s ease;
+    }
+    
+    .back-link:hover {
+      color: #94a3b8;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+        <polyline points="22,6 12,13 2,6"></polyline>
+      </svg>
+    </div>
+    
+    <h1>Kapcsolat</h1>
+    
+    <p>
+      Ha bármilyen észrevételed, kérdésed vagy javaslatod van az alkalmazással kapcsolatban, 
+      keress bátran az alábbi email címen!
+    </p>
+    
+    <a href="mailto:budairoland@gmail.com" class="email-link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+        <polyline points="22,6 12,13 2,6"></polyline>
+      </svg>
+      budairoland@gmail.com
+    </a>
+    
+    <a href="/" class="back-link">← Vissza az alkalmazáshoz</a>
+  </div>
+</body>
+</html>

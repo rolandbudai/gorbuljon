@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Az alkalmazásról - Pergetőnapló</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #1a2634 0%, #0f172a 100%);
+      min-height: 100vh;
+      padding: 2rem;
+      color: #f8fafc;
+    }
+    
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+    
+    .logo {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 1rem;
+      background: rgba(20, 184, 166, 0.15);
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.5rem;
+    }
+    
+    h1 {
+      font-size: 1.75rem;
+      color: #14b8a6;
+      margin-bottom: 0.5rem;
+    }
+    
+    .tagline {
+      color: #94a3b8;
+      font-size: 1rem;
+    }
+    
+    .intro {
+      background: rgba(30, 41, 59, 0.8);
+      backdrop-filter: blur(12px);
+      border-radius: 12px;
+      padding: 1.5rem;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      margin-bottom: 1.5rem;
+    }
+    
+    .intro p {
+      color: #cbd5e1;
+      line-height: 1.7;
+    }
+    
+    .features {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    
+    .feature {
+      background: rgba(30, 41, 59, 0.8);
+      backdrop-filter: blur(12px);
+      border-radius: 12px;
+      padding: 1.25rem;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      gap: 1rem;
+      align-items: flex-start;
+    }
+    
+    .feature-icon {
+      width: 48px;
+      height: 48px;
+      min-width: 48px;
+      background: rgba(20, 184, 166, 0.15);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+    }
+    
+    .feature-content h3 {
+      color: #f8fafc;
+      font-size: 1rem;
+      margin-bottom: 0.375rem;
+    }
+    
+    .feature-content p {
+      color: #94a3b8;
+      font-size: 0.875rem;
+      line-height: 1.5;
+    }
+    
+    .back-link {
+      display: inline-block;
+      margin-top: 2rem;
+      color: #64748b;
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: color 0.2s ease;
+    }
+    
+    .back-link:hover {
+      color: #94a3b8;
+    }
+    
+    .footer {
+      text-align: center;
+      margin-top: 2rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">🎣</div>
+      <h1>Pergetőnapló</h1>
+      <p class="tagline">A te személyes horgásznaplód</p>
+    </div>
+    
+    <div class="intro">
+      <p>
+        A Pergetőnapló egy modern horgásznapló alkalmazás, amely segít nyomon követni 
+        fogásaidat, elemezni a horgászathoz kapcsolódó környezeti körülményeket, 
+        és javítani eredményeidet az adatok alapján.
+      </p>
+    </div>
+    
+    <div class="features">
+      <div class="feature">
+        <div class="feature-icon">📝</div>
+        <div class="feature-content">
+          <h3>Fogások rögzítése</h3>
+          <p>Mentsd el fogásaidat a halfaj, súly, hossz és helyszín megadásával. Minden rekordhoz automatikusan rögzülnek az aktuális környezeti adatok.</p>
+        </div>
+      </div>
+      
+      <div class="feature">
+        <div class="feature-icon">🌤️</div>
+        <div class="feature-content">
+          <h3>Időjárási adatok</h3>
+          <p>Valós idejű időjárás a horgászhelyen: hőmérséklet, légnyomás, szél, páratartalom. Az adatok automatikusan mentődnek a fogásokhoz.</p>
+        </div>
+      </div>
+      
+      <div class="feature">
+        <div class="feature-icon">💧</div>
+        <div class="feature-content">
+          <h3>Vízállás és vízhőmérséklet</h3>
+          <p>Az OVSZ mérőállomások adatai alapján láthatod a közeli folyók aktuális vízállását és vízhőmérsékletét.</p>
+        </div>
+      </div>
+      
+      <div class="feature">
+        <div class="feature-icon">📊</div>
+        <div class="feature-content">
+          <h3>Statisztikák és elemzések</h3>
+          <p>Részletes statisztikák a fogásaidról: halfaj eloszlás, időjárási összefüggések, sikerességi mutatók és még sok más.</p>
+        </div>
+      </div>
+      
+      <div class="feature">
+        <div class="feature-icon">📅</div>
+        <div class="feature-content">
+          <h3>Előrejelzések</h3>
+          <p>Időjárás és vízállás előrejelzés a következő napokra, hogy megtervezhesd a tökéletes horgásztúrát.</p>
+        </div>
+      </div>
+      
+      <div class="feature">
+        <div class="feature-icon">📱</div>
+        <div class="feature-content">
+          <h3>Mobilra optimalizált</h3>
+          <p>PWA alkalmazásként telepíthető telefonra, offline is működik, és mindig kéznél van a vízparton.</p>
+        </div>
+      </div>
+    </div>
+    
+    <div class="footer">
+      <a href="/" class="back-link">← Vissza az alkalmazáshoz</a>
+    </div>
+  </div>
+</body>
+</html>

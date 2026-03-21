@@ -1,50 +1,85 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
-export default defineConfig({
+// URL/port: .env fájlban VITE_APP_BASE_URL (pl. '/' vagy '/halnaplo/'), VITE_DEV_PORT (pl. 5173)
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
+  const base = env.VITE_APP_BASE_URL ?? '/'
+  const port = parseInt(env.VITE_DEV_PORT ?? '5173', 10)
+
+  return {
+  base,
   plugins: [
     react(),
     VitePWA({
-      registerType: 'prompt',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
+      registerType: 'autoUpdate',
+      includeAssets: ['favicon_light.ico', 'favicon_dark.ico', 'icon-192x192.png', 'icon-512x512.png', 'apple-touch-icon.png'],
       manifest: {
-        name: 'HALNAPLÓ',
-        short_name: 'HALNAPLÓ',
-        description: 'Vízállás és időjárás információk halászoknak',
-        theme_color: '#2563eb',
-        background_color: '#FFFFF7',
+        id: '/',
+        name: 'Pergetőnapló',
+        short_name: 'Halnapló',
+        description: 'Horgászfogások és időjárási adatok rögzítése',
+        theme_color: '#215a64',
+        background_color: '#242424',
         display: 'standalone',
-        orientation: 'portrait-primary',
+        orientation: 'portrait',
         scope: '/',
         start_url: '/',
         icons: [
-
           {
-            src: 'icon-192x192.png',
+            src: '/icon-192x192.png',
             sizes: '192x192',
             type: 'image/png',
+            purpose: 'any',
           },
           {
-            src: 'icon-512x512.png',
+            src: '/icon-512x512.png',
             sizes: '512x512',
             type: 'image/png',
+            purpose: 'any',
           },
+          {
+            src: '/icon-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable',
+          }
         ],
       },
-      // Service worker nincs engedélyezve Fázis 1-ben
-      // Csak a manifest generálódik
-      // A workbox konfiguráció elhagyásával is generálódik service worker,
-      // de a registerType: 'prompt' és devOptions.enabled: false miatt
-      // nem lesz aktív service worker regisztráció
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,json}'],
+        // Kikényszeríti a service worker frissítését minden deploy után
+        skipWaiting: true,
+        clientsClaim: true,
+        runtimeCaching: [
+          {
+            // Netlify proxy hívások - mindig hálózatról
+            urlPattern: ({ url }) => url.hostname.includes('netlify.app'),
+            handler: 'NetworkOnly',
+          },
+          {
+            urlPattern: ({ url }) => url.pathname.startsWith('/api'),
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'api-cache',
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 60 * 60 * 24 // 1 nap
+              },
+            },
+          }
+        ]
+      },
       devOptions: {
-        enabled: false, // Development módban ne regisztráljon service worker-t
+        enabled: true, // Enable in dev to test PWA features
       },
     }),
   ],
   server: {
-    host: true, // Enable network access
+    host: true,
+    port,
     proxy: {
       '/api/ovszws': {
         target: 'https://hydroinfo.hu',
@@ -64,4 +99,5 @@ export default defineConfig({
       },
     },
   },
+  }
 })

@@ -10,7 +10,7 @@ import {
     Legend,
 } from 'chart.js'
 import type { LocationRecord } from '../../services/records'
-import type { DataType } from '../../utils/statistics'
+// import type { DataType } from '../../utils/statistics'
 import { analyzeFishType, getAllFishTypes } from '../../utils/fishStatistics'
 import { getLevelDescription, getDataTypeConfig } from '../../utils/statistics'
 

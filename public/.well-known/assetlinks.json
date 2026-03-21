@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.halnaplo.peca",
+      "sha256_cert_fingerprints": [
+        "4C:C3:7C:74:47:AB:E5:73:7A:BC:72:7F:5A:D9:A2:0A:0F:A2:DD:22:29:FF:3B:85:48:A3:7C:CE:D3:B0:0E:40"
+      ]
+    }
+  }
+]

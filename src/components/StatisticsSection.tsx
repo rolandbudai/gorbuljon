@@ -21,10 +21,19 @@ export function StatisticsSection({ records, onClose }: StatisticsSectionProps) 
         <h2>Statisztikák</h2>
         <button
           onClick={onClose}
-          className="statistics-close-btn"
+          style={{
+            padding: '0.5rem 1rem',
+            borderRadius: '0.5rem',
+            border: 'none',
+            background: '#e2e8f0',
+            cursor: 'pointer',
+            color: '#475569',
+            fontWeight: 'bold',
+            fontSize: '0.875rem',
+          }}
           aria-label="Bezárás"
         >
-          ×
+          ✕ Bezárás
         </button>
       </div>
 
