@@ -32,5 +32,10 @@ firebase-debug.*.log
 
 .env.local
 .env
+.env.production
+.env.development
+.env.*.local
+# Csak sablon commitolható, értékek nélkül:
+# .env.example
 # Local Netlify folder
 .netlify
